@@ -199,6 +199,18 @@ def get_stale_files(
         con.close()
 
 
+def get_all_repositories(db_path: Path) -> list[str]:
+    """Return all distinct repository names in the manifest."""
+    con = _connect(db_path)
+    try:
+        rows = con.execute(
+            "SELECT DISTINCT repository FROM indexed_file"
+        ).fetchall()
+        return [r["repository"] for r in rows]
+    finally:
+        con.close()
+
+
 # ---------------------------------------------------------------------------
 # File hashing
 # ---------------------------------------------------------------------------

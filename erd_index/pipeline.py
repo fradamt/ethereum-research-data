@@ -37,6 +37,7 @@ from erd_index.parse.py_parser import parse_python_file
 from erd_index.parse.rust_parser import parse_rust_file
 from erd_index.state.manifest_db import (
     compute_file_hash,
+    get_all_repositories,
     get_indexed_file,
     get_stale_files,
     init_state_db,
@@ -266,9 +267,21 @@ def _cleanup_stale_markdown(
 ) -> int:
     """Delete stale chunks for files that no longer exist on disk.
 
+    Also handles sources that were removed from config entirely — any
+    repository in the manifest that is not in *paths_by_source* gets
+    cleaned up with an empty current_paths set.
+
     Returns the total number of chunk IDs deleted.
     """
     total_deleted = 0
+
+    # Include removed sources: manifest repos not in current discovery
+    all_repos = get_all_repositories(state_db)
+    corpus_repos = {r for r in all_repos if r not in {cr.name for cr in settings.code_repos}}
+    for repo in corpus_repos:
+        if repo not in paths_by_source:
+            paths_by_source[repo] = set()  # triggers full stale cleanup
+
     for src_name, current_paths in paths_by_source.items():
         stale_rows = get_stale_files(state_db, src_name, current_paths)
         for row in stale_rows:

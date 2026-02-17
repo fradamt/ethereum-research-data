@@ -127,7 +127,6 @@ def _split_at_statement_boundaries(
     if len(boundaries) <= 1:
         return []  # Can't split meaningfully; fall back.
 
-    header_len = len(header) + 1  # +1 for newline
     target = sizing.target_chars
 
     parts: list[tuple[str, int, int]] = []

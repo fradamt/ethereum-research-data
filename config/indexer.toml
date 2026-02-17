@@ -54,8 +54,11 @@ exclude = ["target/**"]
 name = "consensus-specs"
 path = "~/EF/consensus-specs"
 language = "python"
-include = ["specs/**/*.md", "tests/**/*.py"]
+include = ["tests/**/*.py"]
 exclude = []
+# Note: specs/**/*.md are NOT indexed here (language detector returns
+# "markdown", which _discover_code_files filters out). To index consensus
+# spec markdown, add a corpus_sources entry instead.
 
 # Markdown corpus sources (auto-discovered from corpus/)
 # Override include/exclude per source if needed

@@ -28,7 +28,8 @@ def start_run(db_path: Path, command: str) -> int:
             (command,),
         )
         con.commit()
-        assert cur.lastrowid is not None
+        if cur.lastrowid is None:
+            raise RuntimeError("INSERT did not return a row ID")
         return cur.lastrowid
     finally:
         con.close()

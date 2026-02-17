@@ -20,16 +20,28 @@ log = logging.getLogger(__name__)
 # Metadata key stored on the index to track which schema version was applied.
 _SCHEMA_VERSION_KEY = "_erd_schema_version"
 
+# Cached client instance — avoids re-creating and health-checking per batch.
+_cached_client: meilisearch.Client | None = None
+_cached_url: str | None = None
+
 
 def get_client(settings: Settings) -> meilisearch.Client:
-    """Create a Meilisearch client from settings.
+    """Return a (cached) Meilisearch client from settings.
+
+    The client is cached for the lifetime of the process. A health check
+    runs only on the first call (or when the URL changes).
 
     Raises a clear error if Meilisearch is unreachable.
     """
+    global _cached_client, _cached_url
+    if _cached_client is not None and _cached_url == settings.meili.url:
+        return _cached_client
     try:
         client = meilisearch.Client(settings.meili.url, settings.meili.master_key or None)
         # Quick health check so callers get a clear error immediately.
         client.health()
+        _cached_client = client
+        _cached_url = settings.meili.url
         return client
     except MeilisearchCommunicationError as exc:
         raise ConnectionError(

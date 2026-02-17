@@ -169,7 +169,7 @@ class Chunk(BaseModel):
         if self.source_kind == SourceKind.FORUM:
             return f"forum:{self.source_name}:{self.topic_id}"
         if self.source_kind == SourceKind.EIP:
-            return f"eip:{self.eip}"
+            return f"eip:{self.eip}" if self.eip is not None else f"eip:unknown:{self.path}"
         return f"code:{self.repository}:{self.path}"
 
     @computed_field  # type: ignore[prop-decorator]

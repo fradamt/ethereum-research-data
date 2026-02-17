@@ -83,6 +83,8 @@ def _source_kind_for(source_name: str) -> SourceKind:
     if source_name == "eips":
         return SourceKind.EIP
     # Default — treat unknown corpus as forum-like markdown (no code).
+    # This is benign: enrich_forum_chunk with no frontmatter just sets
+    # influence_score = 0.0. A dedicated GENERIC source kind is deferred.
     return SourceKind.FORUM
 
 

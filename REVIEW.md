@@ -573,6 +573,12 @@ These bugs were found by a GPT-5.3-codex architecture review and fixed:
 | 10 | **`build_graph(changed_only=True)` silently ignored** — always did full rebuild | Added log warning; documented as not-yet-implemented |
 | 11 | **Code dep edges used bare qualnames** — `from_code_node_id` was a qualname, not a full `node_id` | `_build_code_deps` now uses `chunk.node_id` for `from_code_node_id` |
 | 12 | **Cross-ref/code-dep FK violations crashed graph build** — edges to non-existent nodes raised `IntegrityError` | Added `try/except IntegrityError` with debug logging in `upsert_cross_ref` and `upsert_code_dep` |
+| 13 | **`doc_id` for EIPs with `eip=None`** — produced `"eip:None"` | Added fallback: `eip:unknown:{path}` when eip is None |
+| 14 | **`assert` for runtime validation** in `run_log.start_run` — disabled by `-O` | Changed to `raise RuntimeError(...)` |
+| 15 | **Dead code `header_len`** in `split_large_units._split_at_statement_boundaries` | Removed unused variable |
+| 16 | **Stale cleanup missed removed sources** — sources deleted from config left orphaned docs in Meili | `_cleanup_stale_markdown` now discovers all manifest repos and cleans up removed sources |
+| 17 | **`get_client()` created new client + health check per call** — thousands of redundant health checks | Added module-level client cache |
+| 18 | **`consensus-specs` TOML included `*.md` in code_repos** — silently dropped by language detector | Removed `specs/**/*.md` from include; added explanatory comment |
 
 ### Remaining (moderate priority)
 
@@ -580,7 +586,6 @@ These bugs were found by a GPT-5.3-codex architecture review and fixed:
 |-------|-------------|--------|
 | **Go multi-type declarations** | `type ( A struct{}; B struct{} )` produces units with same line span → chunk_id collision | Rare; only affects grouped type blocks |
 | **`superseded-by` edge direction** | `supersedes_eips` edges go from→to but "superseded-by" semantics may expect the reverse | Review spec intent |
-| **Stale cleanup misses empty sources** | If a source is removed from config, its files aren't discovered, so `paths_by_source` has no entry and stale cleanup doesn't run | Orphaned docs persist in Meili |
 | **Small-function grouping loses individual graph nodes** | Grouped functions produce one `code_group` node, individual functions don't get their own nodes | Graph loses per-function resolution |
 
 ### Not yet implemented
