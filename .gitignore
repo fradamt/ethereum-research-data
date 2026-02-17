@@ -1,0 +1,7 @@
+raw/
+corpus/
+__pycache__/
+*.pyc
+.DS_Store
+CLAUDE.md
+claude-files/

@@ -1,0 +1,18 @@
+{
+  "sources": [
+    {
+      "name": "ethresearch",
+      "type": "discourse",
+      "url": "https://ethresear.ch",
+      "raw_dir": "raw/ethresearch",
+      "corpus_dir": "corpus/ethresearch"
+    },
+    {
+      "name": "magicians",
+      "type": "discourse",
+      "url": "https://ethereum-magicians.org",
+      "raw_dir": "raw/magicians",
+      "corpus_dir": "corpus/magicians"
+    }
+  ]
+}
