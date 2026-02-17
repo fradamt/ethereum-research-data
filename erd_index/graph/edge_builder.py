@@ -41,10 +41,13 @@ def _build_eip_deps(chunk: Chunk) -> list[dict[str, Any]]:
             "extractor": "frontmatter",
         })
 
-    for to_eip in chunk.supersedes_eips:
+    # supersedes_eips comes from the ``superseded-by`` frontmatter field,
+    # meaning "this EIP is superseded BY these EIPs".  So the superseding
+    # EIP is the one in the list, and chunk.eip is the one being superseded.
+    for superseder in chunk.supersedes_eips:
         edges.append({
-            "from_eip": chunk.eip,
-            "to_eip": to_eip,
+            "from_eip": superseder,
+            "to_eip": chunk.eip,
             "relation": "supersedes",
             "source_node_id": chunk.node_id,
             "confidence": 1.0,

@@ -580,13 +580,13 @@ These bugs were found by a GPT-5.3-codex architecture review and fixed:
 | 17 | **`get_client()` created new client + health check per call** — thousands of redundant health checks | Added module-level client cache |
 | 18 | **`consensus-specs` TOML included `*.md` in code_repos** — silently dropped by language detector | Removed `specs/**/*.md` from include; added explanatory comment |
 
-### Remaining (moderate priority)
+| 19 | **Go multi-type declarations** — `type ( A struct{}; B struct{} )` produced same line span → chunk_id collision | `_process_type_spec` now uses `spec_node` (individual type) for text/lines instead of `decl_node` (entire block) |
+| 20 | **`superseded-by` edge direction** — edges were backwards (from superseded → superseder) | Reversed: `from_eip` is now the superseder, `to_eip` is the superseded EIP |
+| 21 | **Small-function grouping lost individual graph nodes** — grouped functions only got one `code_group` node | Added `preserve_individuals` flag to `chunk_code_units`; `build_graph` enables it so individual nodes are created alongside group chunks |
 
-| Issue | Description | Impact |
-|-------|-------------|--------|
-| **Go multi-type declarations** | `type ( A struct{}; B struct{} )` produces units with same line span → chunk_id collision | Rare; only affects grouped type blocks |
-| **`superseded-by` edge direction** | `supersedes_eips` edges go from→to but "superseded-by" semantics may expect the reverse | Review spec intent |
-| **Small-function grouping loses individual graph nodes** | Grouped functions produce one `code_group` node, individual functions don't get their own nodes | Graph loses per-function resolution |
+### Remaining
+
+No known bugs. Remaining work is feature development (see "Not yet implemented" below).
 
 ### Not yet implemented
 

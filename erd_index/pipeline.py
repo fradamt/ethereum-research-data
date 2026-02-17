@@ -446,10 +446,15 @@ def _discover_code_files(
 def _process_code_file(
     discovered: DiscoveredFile,
     settings: Settings,
+    *,
+    preserve_individuals: bool = False,
 ) -> tuple[list[Chunk], list[str]]:
     """Parse, chunk, and enrich a single code file.
 
     Returns (chunks, chunk_ids).
+
+    If *preserve_individuals* is True, small functions that were grouped also
+    appear as individual chunks (for per-function graph node resolution).
     """
     source = discovered.absolute_path.read_text(encoding="utf-8", errors="replace")
 
@@ -470,7 +475,9 @@ def _process_code_file(
         return [], []
 
     # Chunk
-    chunks = chunk_code_units(units, settings.chunk_sizing)
+    chunks = chunk_code_units(
+        units, settings.chunk_sizing, preserve_individuals=preserve_individuals,
+    )
 
     # Enrich each chunk
     for chunk in chunks:
@@ -565,7 +572,9 @@ def build_graph(
         code_files = _discover_code_files(settings)
         for discovered in code_files:
             try:
-                chunks, _ = _process_code_file(discovered, settings)
+                chunks, _ = _process_code_file(
+                    discovered, settings, preserve_individuals=True,
+                )
                 all_chunks.extend(chunks)
                 for chunk in chunks:
                     deps = extract_dependencies(chunk)

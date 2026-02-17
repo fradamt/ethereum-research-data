@@ -17,12 +17,18 @@ log = logging.getLogger(__name__)
 def chunk_code_units(
     units: list[ParsedUnit],
     sizing: ChunkSizing | None = None,
+    *,
+    preserve_individuals: bool = False,
 ) -> list[Chunk]:
     """Partition *units* into ``Chunk`` objects using the sizing policy.
 
     1. Small functions (below thresholds) are grouped into ``code_group`` chunks.
     2. Normal functions become one ``code_function`` (or ``code_struct``) chunk each.
     3. Large functions (above hard_max_chars) are split at statement boundaries.
+
+    If *preserve_individuals* is True, small functions that were grouped also
+    appear as individual chunks (for graph-node resolution).  These individual
+    chunks are returned alongside the group chunks.
     """
     if sizing is None:
         sizing = ChunkSizing()
@@ -45,6 +51,9 @@ def chunk_code_units(
     # 1. Group small functions.
     if small:
         chunks.extend(group_small_units(small, sizing))
+        if preserve_individuals:
+            for unit in small:
+                chunks.append(_unit_to_chunk(unit))
 
     # 2. Normal-sized units: one chunk each.
     for unit in normal:

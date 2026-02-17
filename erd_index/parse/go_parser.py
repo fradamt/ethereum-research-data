@@ -221,12 +221,16 @@ def _process_type_spec(
     qualname = f"{pkg_name}.{name}"
     doc = _get_doc_comment(preceding, decl_node.start_point[0], source_bytes)
 
-    # Use the full type_declaration text (includes ``type Name struct { ... }``).
-    text = decl_node.text.decode("utf-8")
-    start_line = decl_node.start_point[0] + 1
-    end_line = decl_node.end_point[0] + 1
+    # Use the type_spec node for text and line span, not the parent
+    # type_declaration.  In grouped declarations like
+    #   type ( A struct{...}; B struct{...} )
+    # the decl_node spans the entire block, giving all specs the same
+    # text/line range and causing chunk_id collisions.
+    text = spec_node.text.decode("utf-8")
+    start_line = spec_node.start_point[0] + 1
+    end_line = spec_node.end_point[0] + 1
 
-    # Signature: first line of the type declaration.
+    # Signature: first line of the type spec.
     sig = text.split("\n", 1)[0]
 
     return ParsedUnit(
