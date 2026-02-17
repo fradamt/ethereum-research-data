@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ethereum-research-data-indexer"
+version = "0.1.0"
+requires-python = ">=3.10"
+description = "Meilisearch indexer for Ethereum research data corpus"
+dependencies = [
+  "meilisearch>=0.34,<1.0",
+  "pydantic>=2.7,<3.0",
+  "PyYAML>=6.0,<7.0",
+  "tree-sitter>=0.22,<0.24",
+  "tree-sitter-python>=0.23,<0.24",
+  "tree-sitter-go>=0.23,<0.24",
+  "tree-sitter-rust>=0.23,<0.23.3",
+  "orjson>=3.10,<4.0",
+]
+
+[project.scripts]
+erd-index = "erd_index.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["erd_index"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+  "mypy>=1.10",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["erd_index"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

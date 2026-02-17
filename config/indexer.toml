@@ -1,0 +1,75 @@
+# erd_index configuration
+# Override any value via CLI flags or environment variables (ERD_INDEX_*)
+
+[meilisearch]
+url = "http://localhost:7700"
+index_name = "eth_chunks_v1"
+index_alias = "eth_chunks_current"
+# master_key via env: MEILI_MASTER_KEY
+batch_size = 1000
+
+[paths]
+corpus_dir = "corpus"
+data_dir = "data"
+graph_db = "data/graph.db"
+state_db = "data/index_state.db"
+
+[chunk_sizing]
+target_chars = 2800
+hard_max_chars = 5500
+small_fn_max_lines = 12
+small_fn_max_chars = 450
+small_group_target_chars = 2200
+small_group_max_members = 6
+
+[versions]
+schema_version = 1
+parser_version = "0.1.0"
+chunker_version = "0.1.0"
+
+# Code repositories to index
+# Each entry: logical name -> local path + language
+[[code_repos]]
+name = "go-ethereum"
+path = "~/EF/go-ethereum"
+language = "go"
+include = ["**/*.go"]
+exclude = ["vendor/**", "build/**", "tests/testdata/**"]
+
+[[code_repos]]
+name = "execution-specs"
+path = "~/EF/execution-specs"
+language = "python"
+include = ["src/**/*.py"]
+exclude = ["**/__pycache__/**", "**/test_*.py"]
+
+[[code_repos]]
+name = "lighthouse"
+path = "~/EF/lighthouse"
+language = "rust"
+include = ["**/*.rs"]
+exclude = ["target/**"]
+
+[[code_repos]]
+name = "consensus-specs"
+path = "~/EF/consensus-specs"
+language = "python"
+include = ["specs/**/*.md", "tests/**/*.py"]
+exclude = []
+
+# Markdown corpus sources (auto-discovered from corpus/)
+# Override include/exclude per source if needed
+[[corpus_sources]]
+name = "ethresearch"
+path = "corpus/ethresearch"
+include = ["**/*.md"]
+
+[[corpus_sources]]
+name = "magicians"
+path = "corpus/magicians"
+include = ["**/*.md"]
+
+[[corpus_sources]]
+name = "eips"
+path = "corpus/eips"
+include = ["eip-*.md"]

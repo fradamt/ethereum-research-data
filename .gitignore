@@ -5,3 +5,8 @@ __pycache__/
 .DS_Store
 CLAUDE.md
 claude-files/
+data/
+.venv/
+*.egg-info/
+dist/
+uv.lock
