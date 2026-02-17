@@ -566,22 +566,22 @@ These bugs were found by a GPT-5.3-codex architecture review and fixed:
 | 3 | **Forum reply merge** — small replies got merged, losing author/post_number | `_merge_small()` now skips forum replies |
 | 4 | **`INSERT OR REPLACE` cascade-deleted edges** — re-upserting a graph node deleted its FK edges | Changed to `ON CONFLICT(node_id) DO UPDATE SET ...` |
 | 5 | **chunk_id/Meili ID mismatch** — manifest stored raw IDs, Meili had sanitized IDs | Added `sanitize_chunk_id()` helper; both now use sanitized IDs |
+| 6 | **Rust `::` in edge builder** — `":" in to_symbol` misclassified Rust paths as resolved node_ids | Added `"::" not in to_symbol` guard to the heuristic |
+| 7 | **`source_date_ts` never populated** — sort by date didn't work | Added `_date_to_ts()` in `markdown_chunker.py` |
+| 8 | **`stats --repo` flag unused** — CLI accepted `--repo` but `show_stats()` ignored it | Wired `--repo` through to `show_stats()` and `get_stats()` |
+| 9 | **Markdown line numbers off** — frontmatter stripping shifted line numbers | Added `fm_line_offset` adjustment in `parse_markdown()` |
+| 10 | **`build_graph(changed_only=True)` silently ignored** — always did full rebuild | Added log warning; documented as not-yet-implemented |
+| 11 | **Code dep edges used bare qualnames** — `from_code_node_id` was a qualname, not a full `node_id` | `_build_code_deps` now uses `chunk.node_id` for `from_code_node_id` |
+| 12 | **Cross-ref/code-dep FK violations crashed graph build** — edges to non-existent nodes raised `IntegrityError` | Added `try/except IntegrityError` with debug logging in `upsert_cross_ref` and `upsert_code_dep` |
 
 ### Remaining (moderate priority)
 
-These were identified by the Codex review but not yet fixed:
-
 | Issue | Description | Impact |
 |-------|-------------|--------|
-| **Rust `::` in edge builder** | `_build_code_deps` heuristic: `":" in to_symbol` misclassifies Rust paths like `std::collections::HashMap` as resolved node_ids | Wrong `to_code_node_id` for Rust deps |
-| **`build_graph(changed_only=True)` ignores the flag** | The `changed_only` parameter is accepted but never passed to file discovery | Graph always fully rebuilds |
 | **Go multi-type declarations** | `type ( A struct{}; B struct{} )` produces units with same line span → chunk_id collision | Rare; only affects grouped type blocks |
 | **`superseded-by` edge direction** | `supersedes_eips` edges go from→to but "superseded-by" semantics may expect the reverse | Review spec intent |
-| **`source_date_ts` never populated** | Chunk field exists but no enrichment step converts `source_date` string to timestamp | Sort by date doesn't work |
 | **Stale cleanup misses empty sources** | If a source is removed from config, its files aren't discovered, so `paths_by_source` has no entry and stale cleanup doesn't run | Orphaned docs persist in Meili |
-| **`stats --repo` flag unused** | CLI accepts `--repo` but `show_stats()` ignores it | Minor UX |
 | **Small-function grouping loses individual graph nodes** | Grouped functions produce one `code_group` node, individual functions don't get their own nodes | Graph loses per-function resolution |
-| **Markdown line numbers off** | Frontmatter stripping shifts line numbers but ParsedUnit.start_line isn't adjusted | start_line inaccurate by ~frontmatter length |
 
 ### Not yet implemented
 

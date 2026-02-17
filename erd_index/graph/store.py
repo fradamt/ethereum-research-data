@@ -6,9 +6,12 @@ for the Ethereum research knowledge graph.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from erd_index.settings import Settings
@@ -240,29 +243,36 @@ def upsert_cross_ref(conn: sqlite3.Connection, edge: dict[str, Any]) -> None:
     if exists:
         return
 
-    conn.execute(
-        """
-        INSERT INTO cross_reference_edge (
-            from_node_id, to_node_id, relation,
-            span_start, span_end, anchor_text,
-            confidence, extractor
-        ) VALUES (
-            :from_node_id, :to_node_id, :relation,
-            :span_start, :span_end, :anchor_text,
-            :confidence, :extractor
+    try:
+        conn.execute(
+            """
+            INSERT INTO cross_reference_edge (
+                from_node_id, to_node_id, relation,
+                span_start, span_end, anchor_text,
+                confidence, extractor
+            ) VALUES (
+                :from_node_id, :to_node_id, :relation,
+                :span_start, :span_end, :anchor_text,
+                :confidence, :extractor
+            )
+            """,
+            {
+                "from_node_id": edge["from_node_id"],
+                "to_node_id": edge["to_node_id"],
+                "relation": edge["relation"],
+                "span_start": span_start,
+                "span_end": span_end,
+                "anchor_text": edge.get("anchor_text"),
+                "confidence": edge.get("confidence", 1.0),
+                "extractor": edge["extractor"],
+            },
         )
-        """,
-        {
-            "from_node_id": edge["from_node_id"],
-            "to_node_id": edge["to_node_id"],
-            "relation": edge["relation"],
-            "span_start": span_start,
-            "span_end": span_end,
-            "anchor_text": edge.get("anchor_text"),
-            "confidence": edge.get("confidence", 1.0),
-            "extractor": edge["extractor"],
-        },
-    )
+    except sqlite3.IntegrityError:
+        # Target node doesn't exist (e.g., EIP not indexed). Skip gracefully.
+        log.debug(
+            "Skipping cross-ref edge: target node %r not found",
+            edge["to_node_id"],
+        )
 
 
 def upsert_code_dep(conn: sqlite3.Connection, edge: dict[str, Any]) -> None:
@@ -285,26 +295,34 @@ def upsert_code_dep(conn: sqlite3.Connection, edge: dict[str, Any]) -> None:
     if exists:
         return
 
-    conn.execute(
-        """
-        INSERT INTO code_dependency_edge (
-            from_code_node_id, to_code_node_id, to_external_symbol,
-            relation, confidence, extractor, evidence_text
-        ) VALUES (
-            :from_code_node_id, :to_code_node_id, :to_external_symbol,
-            :relation, :confidence, :extractor, :evidence_text
+    try:
+        conn.execute(
+            """
+            INSERT INTO code_dependency_edge (
+                from_code_node_id, to_code_node_id, to_external_symbol,
+                relation, confidence, extractor, evidence_text
+            ) VALUES (
+                :from_code_node_id, :to_code_node_id, :to_external_symbol,
+                :relation, :confidence, :extractor, :evidence_text
+            )
+            """,
+            {
+                "from_code_node_id": edge["from_code_node_id"],
+                "to_code_node_id": to_node,
+                "to_external_symbol": to_ext,
+                "relation": edge["relation"],
+                "confidence": edge.get("confidence", 0.7),
+                "extractor": edge.get("extractor", "tree_sitter"),
+                "evidence_text": edge.get("evidence_text"),
+            },
         )
-        """,
-        {
-            "from_code_node_id": edge["from_code_node_id"],
-            "to_code_node_id": to_node,
-            "to_external_symbol": to_ext,
-            "relation": edge["relation"],
-            "confidence": edge.get("confidence", 0.7),
-            "extractor": edge.get("extractor", "tree_sitter"),
-            "evidence_text": edge.get("evidence_text"),
-        },
-    )
+    except sqlite3.IntegrityError:
+        # Source or target node doesn't exist. Skip gracefully.
+        log.debug(
+            "Skipping code dep edge: node not found (from=%r, to=%r)",
+            edge["from_code_node_id"],
+            to_node or to_ext,
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -109,13 +109,18 @@ def _build_code_deps(
     """
     edges: list[dict[str, Any]] = []
 
-    for from_nid, to_symbol, relation in dependencies:
+    # Use chunk.node_id for from_code_node_id — the dependency extractor
+    # returns bare qualnames as from_sym, but the graph FK requires a full
+    # node_id (repo:path:qualname).
+    from_node_id = chunk.node_id
+
+    for _from_sym, to_symbol, relation in dependencies:
         # Heuristic: a resolved node_id uses single colons (e.g., "go-ethereum:core/vm:Run").
         # Rust paths use "::" (e.g., "std::collections::HashMap") — those are external.
         is_resolved = ":" in to_symbol and "::" not in to_symbol
         if is_resolved:
             edges.append({
-                "from_code_node_id": from_nid,
+                "from_code_node_id": from_node_id,
                 "to_code_node_id": to_symbol,
                 "to_external_symbol": None,
                 "relation": relation,
@@ -125,7 +130,7 @@ def _build_code_deps(
             })
         else:
             edges.append({
-                "from_code_node_id": from_nid,
+                "from_code_node_id": from_node_id,
                 "to_code_node_id": None,
                 "to_external_symbol": to_symbol,
                 "relation": relation,
