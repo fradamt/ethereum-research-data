@@ -26,6 +26,7 @@ from erd_index.graph.store import (
     upsert_cross_ref,
     upsert_eip_dep,
     upsert_node,
+    upsert_spec_code_link,
 )
 from erd_index.index.document_builder import chunk_to_document, sanitize_chunk_id
 from erd_index.index.meili_client import ensure_index
@@ -633,6 +634,55 @@ def build_graph(
 
 
 # ---------------------------------------------------------------------------
+# Spec-code linking
+# ---------------------------------------------------------------------------
+
+
+def link_specs(
+    settings: Settings,
+    *,
+    verbose: bool = False,
+) -> None:
+    """Find and upsert heuristic spec-to-code links in the graph DB.
+
+    Queries existing code and EIP nodes, applies heuristic matchers, and
+    upserts the resulting spec_code_link rows.  Reports counts by relation type.
+    """
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    from erd_index.enrich.spec_code_linker import find_spec_code_links
+
+    graph_db_path = settings.resolved_graph_db
+    if not graph_db_path.exists():
+        log.warning("Graph DB not found at %s; run build-graph first", graph_db_path)
+        print("Error: graph.db not found. Run 'build-graph' first.")
+        return
+
+    conn = get_connection(graph_db_path)
+    try:
+        links = find_spec_code_links(conn)
+
+        for link in links:
+            upsert_spec_code_link(conn, link)
+        conn.commit()
+
+        # Report counts by relation type
+        counts: dict[str, int] = {}
+        for link in links:
+            rel = link["relation"]
+            counts[rel] = counts.get(rel, 0) + 1
+
+        total = len(links)
+        print(f"Spec-code linking complete: {total} links upserted")
+        for rel, count in sorted(counts.items()):
+            print(f"  {rel}: {count}")
+
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
 # Sync
 # ---------------------------------------------------------------------------
 
@@ -644,7 +694,7 @@ def sync_all(
     dry_run: bool = False,
     verbose: bool = False,
 ) -> None:
-    """Full sync: markdown + code + graph.
+    """Full sync: markdown + code + graph + spec-code links.
 
     Each phase is isolated so that a failure in code ingestion (e.g. missing
     repos) or graph building does not prevent markdown ingestion from completing.
@@ -660,7 +710,12 @@ def sync_all(
         try:
             build_graph(settings, changed_only=changed_only, verbose=verbose)
         except Exception:
-            log.exception("Graph build failed; sync completing without graph update")
+            log.exception("Graph build failed; sync completing without spec-code linking")
+
+        try:
+            link_specs(settings, verbose=verbose)
+        except Exception:
+            log.exception("Spec-code linking failed; sync completing without links")
 
 
 # ---------------------------------------------------------------------------

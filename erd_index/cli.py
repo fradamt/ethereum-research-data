@@ -74,6 +74,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sync.add_argument("--dry-run", action="store_true", help="Parse and chunk without writing")
 
+    # link-specs
+    sub.add_parser("link-specs", help="Find and upsert spec-to-code links via heuristics")
+
     # stats
     stats = sub.add_parser("stats", help="Show index and graph statistics")
     stats.add_argument("--repo", help="Show stats for a specific repo only")
@@ -112,6 +115,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_ingest_code(settings, args)
     elif args.command == "build-graph":
         _cmd_build_graph(settings, args)
+    elif args.command == "link-specs":
+        _cmd_link_specs(settings, args)
     elif args.command == "sync":
         _cmd_sync(settings, args)
     elif args.command == "stats":
@@ -163,6 +168,12 @@ def _cmd_build_graph(settings, args) -> None:
     from erd_index.pipeline import build_graph
 
     build_graph(settings, changed_only=args.changed_only, verbose=args.verbose)
+
+
+def _cmd_link_specs(settings, args) -> None:
+    from erd_index.pipeline import link_specs
+
+    link_specs(settings, verbose=args.verbose)
 
 
 def _cmd_sync(settings, args) -> None:
