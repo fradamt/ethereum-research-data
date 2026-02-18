@@ -61,7 +61,7 @@ _ABBREVIATIONS: dict[str, list[str]] = {
     "eip": ["ethereum improvement proposal"],
     "erc": ["ethereum request for comments"],
     "eof": ["evm object format"],
-    "blob": ["binary large object"],
+    "blob": ["blob transaction", "eip-4844 data blob"],
     # --- Staking & validators ---
     "dvt": ["distributed validator technology"],
     # --- Zero-knowledge ---
