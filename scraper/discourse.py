@@ -110,7 +110,11 @@ class DiscourseScraper:
                 if exc.code == 429:
                     retry_after = exc.headers.get("Retry-After")
                     if retry_after:
-                        wait = int(retry_after)
+                        try:
+                            wait = int(retry_after)
+                        except ValueError:
+                            # Retry-After can be a date string; fall back to backoff
+                            wait = self.delay * (2 ** attempt)
                     else:
                         wait = self.delay * (2 ** attempt)
                     print(f"  Rate limited, waiting {wait}s...")

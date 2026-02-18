@@ -122,15 +122,17 @@ def ingest_markdown(
             chunks, chunk_ids = _process_markdown_file(discovered, settings)
             repo_key = discovered.repository or discovered.source_name
 
-            if not dry_run and chunks:
-                # Build Meilisearch documents
-                documents = [
-                    chunk_to_document(c, settings.schema_version) for c in chunks
-                ]
-                batch_upsert(settings, documents)
-                total_chunks_upserted += len(documents)
+            if not dry_run:
+                if chunks:
+                    # Build Meilisearch documents
+                    documents = [
+                        chunk_to_document(c, settings.schema_version) for c in chunks
+                    ]
+                    batch_upsert(settings, documents)
+                    total_chunks_upserted += len(documents)
 
                 # Delete stale chunks from previous indexing of this file
+                # (runs even when chunks is empty — handles files that now produce 0 chunks)
                 stale = _stale_chunk_ids(
                     state_db, repo_key, discovered.relative_path, chunk_ids,
                 )
@@ -138,7 +140,6 @@ def ingest_markdown(
                     delete_by_ids(settings, stale)
                     log.debug("Deleted %d stale chunks for %s", len(stale), discovered.relative_path)
 
-            if not dry_run:
                 file_hash = compute_file_hash(discovered.absolute_path)
                 upsert_indexed_file(
                     state_db,
@@ -161,9 +162,10 @@ def ingest_markdown(
             error_details.append(msg)
             log.exception("Error processing %s", msg)
 
-    # 6. Clean up stale files
+    # 6. Clean up stale files (only when processing ALL sources — scoped
+    # ingests must not delete data from other sources)
     chunks_deleted = 0
-    if not dry_run:
+    if not dry_run and source_name is None:
         chunks_deleted = _cleanup_stale_markdown(settings, state_db, paths_by_source)
 
     # 7. Finish run log
@@ -359,14 +361,15 @@ def ingest_code(
         try:
             chunks, chunk_ids = _process_code_file(discovered, settings)
 
-            if not dry_run and chunks:
-                documents = [
-                    chunk_to_document(c, settings.schema_version) for c in chunks
-                ]
-                batch_upsert(settings, documents)
-                total_chunks_upserted += len(documents)
+            if not dry_run:
+                if chunks:
+                    documents = [
+                        chunk_to_document(c, settings.schema_version) for c in chunks
+                    ]
+                    batch_upsert(settings, documents)
+                    total_chunks_upserted += len(documents)
 
-                # Delete stale chunks from previous indexing of this file
+                # Delete stale chunks (runs even for zero-chunk files)
                 stale = _stale_chunk_ids(
                     state_db, discovered.repository, discovered.relative_path, chunk_ids,
                 )
@@ -374,7 +377,6 @@ def ingest_code(
                     delete_by_ids(settings, stale)
                     log.debug("Deleted %d stale chunks for %s", len(stale), discovered.relative_path)
 
-            if not dry_run:
                 file_hash = compute_file_hash(discovered.absolute_path)
                 upsert_indexed_file(
                     state_db,
@@ -397,9 +399,10 @@ def ingest_code(
             error_details.append(msg)
             log.exception("Error processing %s", msg)
 
-    # 6. Clean up stale files
+    # 6. Clean up stale files (only when processing ALL repos — scoped
+    # ingests must not delete data from other repos)
     chunks_deleted = 0
-    if not dry_run:
+    if not dry_run and repo_name is None:
         chunks_deleted = _cleanup_stale_code(settings, state_db, paths_by_repo)
 
     # 7. Finish run log
@@ -565,9 +568,18 @@ def build_graph(
     run_id = start_run(state_db, "build-graph")
 
     try:
+        # Clear all existing graph data before full rebuild.
+        # The graph is fully rebuildable from source, so this is safe.
+        log.info("Clearing existing graph data for full rebuild")
+        for table in ("code_dependency_edge", "cross_reference_edge",
+                      "spec_code_link", "eip_dependency_edge", "node"):
+            conn.execute(f"DELETE FROM {table}")
+        conn.commit()
+
         # Collect all chunks and their dependencies
         all_chunks: list[Chunk] = []
         all_deps: list[tuple[Chunk, list[tuple[str, str, str]]]] = []
+        graph_errors = 0
 
         # Process markdown files
         md_files = _discover_markdown_files(settings)
@@ -578,6 +590,7 @@ def build_graph(
                 for chunk in chunks:
                     all_deps.append((chunk, []))
             except Exception:
+                graph_errors += 1
                 log.exception("Graph build: error processing %s", discovered.relative_path)
 
         # Process code files
@@ -592,6 +605,7 @@ def build_graph(
                     deps = extract_dependencies(chunk)
                     all_deps.append((chunk, deps))
             except Exception:
+                graph_errors += 1
                 log.exception("Graph build: error processing %s", discovered.relative_path)
 
         # Pass 1: upsert all nodes
@@ -631,7 +645,7 @@ def build_graph(
             files_skipped=0,
             chunks_upserted=nodes_upserted,
             chunks_deleted=0,
-            errors=0,
+            errors=graph_errors,
         )
 
     except Exception:

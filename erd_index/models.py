@@ -200,7 +200,12 @@ class Chunk(BaseModel):
             return f"{self.repository}:{self.path}:{self.symbol_qualname or self.symbol_name}"
         if self.eip is not None:
             if self.heading_path:
-                anchor = self.heading_path[-1].lower().replace(" ", "-")
+                # Use full heading path to avoid collisions between sections
+                # with the same final heading (e.g., "Parameters" under
+                # different parent headings).
+                anchor = "/".join(
+                    h.lower().replace(" ", "-") for h in self.heading_path
+                )
                 return f"eip:{self.eip}:{anchor}"
             return f"eip:{self.eip}"
         if self.topic_id is not None:

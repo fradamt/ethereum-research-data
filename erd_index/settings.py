@@ -111,7 +111,7 @@ def load_settings(
     meili_raw = raw.get("meilisearch", {})
     meili = MeilisearchConfig(
         url=os.environ.get("ERD_MEILI_URL", meili_raw.get("url", "http://localhost:7700")),
-        master_key=os.environ.get("MEILI_MASTER_KEY", ""),
+        master_key=os.environ.get("MEILI_MASTER_KEY", meili_raw.get("master_key", "")),
         index_name=meili_raw.get("index_name", "eth_chunks_v1"),
         index_alias=meili_raw.get("index_alias", "eth_chunks_current"),
         batch_size=int(meili_raw.get("batch_size", 1000)),
