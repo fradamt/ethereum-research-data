@@ -338,6 +338,21 @@ class TestDependencyPython:
         assert "ethereum.base_types.Uint256" in targets
         assert "ethereum.base_types.Address" in targets
 
+    def test_multiline_import_with_inline_comments(self):
+        """Inline comments in collapsed multi-line imports don't truncate later names."""
+        c = _code_chunk(
+            language=Language.PYTHON,
+            text="def f():\n    x = bar(1)\n    y = baz(2)\n",
+            symbol_qualname="mod.f",
+            imports=[
+                "from foo import (\n    bar,  # a helper\n    baz,\n)",
+            ],
+        )
+        deps = extract_dependencies(c)
+        targets = {d[1] for d in deps}
+        assert "foo.bar" in targets
+        assert "foo.baz" in targets
+
 
 class TestDependencyGo:
     def test_go_import_used(self):

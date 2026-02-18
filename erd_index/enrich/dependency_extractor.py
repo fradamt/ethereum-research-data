@@ -37,24 +37,35 @@ def _parse_python_imports(text: str) -> list[tuple[str, str]]:
     # Collapse multi-line parenthesized imports to single lines so the
     # single-line regex can match them.  e.g.:
     #   from foo import (
-    #       Bar,
+    #       Bar,  # comment
     #       Baz,
     #   )
     # becomes: from foo import (Bar, Baz,)
+    # Strip inline comments per-line BEFORE collapsing to avoid comments
+    # from one line bleeding into names from subsequent lines.
+    def _collapse_import(m: re.Match) -> str:  # type: ignore[type-arg]
+        prefix = m.group(1)
+        body = m.group(2)
+        # Strip inline comments from each line before joining
+        lines = [line.split("#")[0].rstrip() for line in body.split("\n")]
+        return prefix + "(" + " ".join(lines) + ")"
+
     text = re.sub(
         r"(from\s+[\w.]+\s+import\s*)\(\s*\n(.*?)\)",
-        lambda m: m.group(1) + "(" + m.group(2).replace("\n", " ") + ")",
+        _collapse_import,
         text,
         flags=re.DOTALL,
     )
 
     for m in _PY_FROM_IMPORT.finditer(text):
         module = m.group(1)
-        names_part = m.group(2).split("#")[0]  # strip inline comments
+        names_part = m.group(2)
         # Handle parenthesized imports on single line
         names_part = names_part.strip().strip("()")
         for name in names_part.split(","):
-            name = name.strip()
+            # Strip inline comments per-name (important for collapsed
+            # multi-line imports like "bar, # comment baz,")
+            name = name.split("#")[0].strip()
             if not name:
                 continue
             # Handle "as" aliases: "bar as b" -> imported_name is "b"

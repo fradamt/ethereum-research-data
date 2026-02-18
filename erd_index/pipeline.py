@@ -101,105 +101,108 @@ def ingest_markdown(
     files_parsed = 0
     files_skipped = 0
     total_chunks_upserted = 0
+    chunks_deleted = 0
     errors = 0
     consecutive_errors = 0
     error_details: list[str] = []
 
     # 5. Process each file
-    for discovered in files:
-        # 5a. Skip unchanged files
-        if changed_only and not is_file_changed(
+    try:
+        for discovered in files:
+            # 5a. Skip unchanged files
+            if changed_only and not is_file_changed(
+                state_db,
+                repository=discovered.repository or discovered.source_name,
+                file_path=discovered.relative_path,
+                size_bytes=discovered.size_bytes,
+                mtime_ns=discovered.mtime_ns,
+                parser_version=settings.parser_version,
+                chunker_version=settings.chunker_version,
+            ):
+                files_skipped += 1
+                continue
+
+            try:
+                chunks, chunk_ids = _process_markdown_file(discovered, settings)
+                repo_key = discovered.repository or discovered.source_name
+
+                if not dry_run:
+                    # Crash-recovery semantics: We upsert to Meilisearch first,
+                    # then delete stale chunks, then write the manifest entry.
+                    # A crash after Meili upsert but before manifest write leaves
+                    # orphan documents in Meili. These are harmless — the same
+                    # chunk IDs will be re-upserted on the next run. A full
+                    # re-index (--changed-only=False) recovers from any crash
+                    # scenario by re-processing all files and cleaning up stale
+                    # chunk IDs via the manifest diff.
+                    if chunks:
+                        # Build Meilisearch documents
+                        documents = [
+                            chunk_to_document(c, settings.schema_version) for c in chunks
+                        ]
+                        batch_upsert(settings, documents)
+                        total_chunks_upserted += len(documents)
+
+                    # Delete stale chunks from previous indexing of this file
+                    # (runs even when chunks is empty — handles files that now produce 0 chunks)
+                    stale = _stale_chunk_ids(
+                        state_db, repo_key, discovered.relative_path, chunk_ids,
+                    )
+                    if stale:
+                        delete_by_ids(settings, stale)
+                        log.debug("Deleted %d stale chunks for %s", len(stale), discovered.relative_path)
+
+                    file_hash = compute_file_hash(discovered.absolute_path)
+                    upsert_indexed_file(
+                        state_db,
+                        repository=repo_key,
+                        file_path=discovered.relative_path,
+                        source_name=discovered.source_name,
+                        language=discovered.language,
+                        size_bytes=discovered.size_bytes,
+                        mtime_ns=discovered.mtime_ns,
+                        file_hash=file_hash,
+                        parser_version=settings.parser_version,
+                        chunker_version=settings.chunker_version,
+                        chunk_ids_json=json.dumps(chunk_ids),
+                    )
+                    files_processed += 1
+
+                files_parsed += 1
+                consecutive_errors = 0
+
+            except ConnectionError:
+                raise  # Meilisearch down — abort entire run
+            except Exception:
+                errors += 1
+                consecutive_errors += 1
+                msg = f"{discovered.source_name}:{discovered.relative_path}"
+                error_details.append(msg)
+                log.exception("Error processing %s", msg)
+                if consecutive_errors >= 10:
+                    raise RuntimeError(
+                        f"Aborting: {consecutive_errors} consecutive errors. "
+                        "Check log output for details."
+                    ) from None
+
+        # 6. Clean up stale files (only when processing ALL sources — scoped
+        # ingests must not delete data from other sources)
+        if not dry_run and source_name is None:
+            chunks_deleted = _cleanup_stale_markdown(settings, state_db, paths_by_source)
+
+    finally:
+        # 7. Finish run log — always runs, even on abort/exception, so the
+        # run_log row is never left with finished_at = NULL.
+        finish_run(
             state_db,
-            repository=discovered.repository or discovered.source_name,
-            file_path=discovered.relative_path,
-            size_bytes=discovered.size_bytes,
-            mtime_ns=discovered.mtime_ns,
-            parser_version=settings.parser_version,
-            chunker_version=settings.chunker_version,
-        ):
-            files_skipped += 1
-            continue
-
-        try:
-            chunks, chunk_ids = _process_markdown_file(discovered, settings)
-            repo_key = discovered.repository or discovered.source_name
-
-            if not dry_run:
-                # Crash-recovery semantics: We upsert to Meilisearch first,
-                # then delete stale chunks, then write the manifest entry.
-                # A crash after Meili upsert but before manifest write leaves
-                # orphan documents in Meili. These are harmless — the same
-                # chunk IDs will be re-upserted on the next run. A full
-                # re-index (--changed-only=False) recovers from any crash
-                # scenario by re-processing all files and cleaning up stale
-                # chunk IDs via the manifest diff.
-                if chunks:
-                    # Build Meilisearch documents
-                    documents = [
-                        chunk_to_document(c, settings.schema_version) for c in chunks
-                    ]
-                    batch_upsert(settings, documents)
-                    total_chunks_upserted += len(documents)
-
-                # Delete stale chunks from previous indexing of this file
-                # (runs even when chunks is empty — handles files that now produce 0 chunks)
-                stale = _stale_chunk_ids(
-                    state_db, repo_key, discovered.relative_path, chunk_ids,
-                )
-                if stale:
-                    delete_by_ids(settings, stale)
-                    log.debug("Deleted %d stale chunks for %s", len(stale), discovered.relative_path)
-
-                file_hash = compute_file_hash(discovered.absolute_path)
-                upsert_indexed_file(
-                    state_db,
-                    repository=repo_key,
-                    file_path=discovered.relative_path,
-                    source_name=discovered.source_name,
-                    language=discovered.language,
-                    size_bytes=discovered.size_bytes,
-                    mtime_ns=discovered.mtime_ns,
-                    file_hash=file_hash,
-                    parser_version=settings.parser_version,
-                    chunker_version=settings.chunker_version,
-                    chunk_ids_json=json.dumps(chunk_ids),
-                )
-                files_processed += 1
-
-            files_parsed += 1
-            consecutive_errors = 0
-
-        except ConnectionError:
-            raise  # Meilisearch down — abort entire run
-        except Exception:
-            errors += 1
-            consecutive_errors += 1
-            msg = f"{discovered.source_name}:{discovered.relative_path}"
-            error_details.append(msg)
-            log.exception("Error processing %s", msg)
-            if consecutive_errors >= 10:
-                raise RuntimeError(
-                    f"Aborting: {consecutive_errors} consecutive errors. "
-                    "Check log output for details."
-                ) from None
-
-    # 6. Clean up stale files (only when processing ALL sources — scoped
-    # ingests must not delete data from other sources)
-    chunks_deleted = 0
-    if not dry_run and source_name is None:
-        chunks_deleted = _cleanup_stale_markdown(settings, state_db, paths_by_source)
-
-    # 7. Finish run log
-    finish_run(
-        state_db,
-        run_id,
-        files_processed=files_processed,
-        files_skipped=files_skipped,
-        chunks_upserted=total_chunks_upserted,
-        chunks_deleted=chunks_deleted,
-        errors=errors,
-        error_details=error_details or None,
-    )
+            run_id,
+            files_processed=files_processed,
+            files_skipped=files_skipped,
+            chunks_upserted=total_chunks_upserted,
+            chunks_deleted=chunks_deleted,
+            errors=errors,
+            error_details=error_details or None,
+        )
 
     log.info(
         "ingest-md complete: %d processed, %d skipped, %d chunks upserted, "
@@ -382,94 +385,97 @@ def ingest_code(
     files_parsed = 0
     files_skipped = 0
     total_chunks_upserted = 0
+    chunks_deleted = 0
     errors = 0
     consecutive_errors = 0
     error_details: list[str] = []
 
     # 5. Process each file
-    for discovered in files:
-        # 5a. Skip unchanged files
-        if changed_only and not is_file_changed(
+    try:
+        for discovered in files:
+            # 5a. Skip unchanged files
+            if changed_only and not is_file_changed(
+                state_db,
+                repository=discovered.repository,
+                file_path=discovered.relative_path,
+                size_bytes=discovered.size_bytes,
+                mtime_ns=discovered.mtime_ns,
+                parser_version=settings.parser_version,
+                chunker_version=settings.chunker_version,
+            ):
+                files_skipped += 1
+                continue
+
+            try:
+                chunks, chunk_ids = _process_code_file(discovered, settings)
+
+                if not dry_run:
+                    if chunks:
+                        documents = [
+                            chunk_to_document(c, settings.schema_version) for c in chunks
+                        ]
+                        batch_upsert(settings, documents)
+                        total_chunks_upserted += len(documents)
+
+                    # Delete stale chunks (runs even for zero-chunk files)
+                    stale = _stale_chunk_ids(
+                        state_db, discovered.repository, discovered.relative_path, chunk_ids,
+                    )
+                    if stale:
+                        delete_by_ids(settings, stale)
+                        log.debug("Deleted %d stale chunks for %s", len(stale), discovered.relative_path)
+
+                    file_hash = compute_file_hash(discovered.absolute_path)
+                    upsert_indexed_file(
+                        state_db,
+                        repository=discovered.repository,
+                        file_path=discovered.relative_path,
+                        source_name=discovered.source_name,
+                        language=discovered.language,
+                        size_bytes=discovered.size_bytes,
+                        mtime_ns=discovered.mtime_ns,
+                        file_hash=file_hash,
+                        parser_version=settings.parser_version,
+                        chunker_version=settings.chunker_version,
+                        chunk_ids_json=json.dumps(chunk_ids),
+                    )
+                    files_processed += 1
+
+                files_parsed += 1
+                consecutive_errors = 0
+
+            except ConnectionError:
+                raise  # Meilisearch down — abort entire run
+            except Exception:
+                errors += 1
+                consecutive_errors += 1
+                msg = f"{discovered.source_name}:{discovered.relative_path}"
+                error_details.append(msg)
+                log.exception("Error processing %s", msg)
+                if consecutive_errors >= 10:
+                    raise RuntimeError(
+                        f"Aborting: {consecutive_errors} consecutive errors. "
+                        "Check log output for details."
+                    ) from None
+
+        # 6. Clean up stale files (only when processing ALL repos, not truncated
+        # by max_files — scoped ingests must not delete data from other repos)
+        if not dry_run and repo_name is None and max_files == 0:
+            chunks_deleted = _cleanup_stale_code(settings, state_db, paths_by_repo)
+
+    finally:
+        # 7. Finish run log — always runs, even on abort/exception, so the
+        # run_log row is never left with finished_at = NULL.
+        finish_run(
             state_db,
-            repository=discovered.repository,
-            file_path=discovered.relative_path,
-            size_bytes=discovered.size_bytes,
-            mtime_ns=discovered.mtime_ns,
-            parser_version=settings.parser_version,
-            chunker_version=settings.chunker_version,
-        ):
-            files_skipped += 1
-            continue
-
-        try:
-            chunks, chunk_ids = _process_code_file(discovered, settings)
-
-            if not dry_run:
-                if chunks:
-                    documents = [
-                        chunk_to_document(c, settings.schema_version) for c in chunks
-                    ]
-                    batch_upsert(settings, documents)
-                    total_chunks_upserted += len(documents)
-
-                # Delete stale chunks (runs even for zero-chunk files)
-                stale = _stale_chunk_ids(
-                    state_db, discovered.repository, discovered.relative_path, chunk_ids,
-                )
-                if stale:
-                    delete_by_ids(settings, stale)
-                    log.debug("Deleted %d stale chunks for %s", len(stale), discovered.relative_path)
-
-                file_hash = compute_file_hash(discovered.absolute_path)
-                upsert_indexed_file(
-                    state_db,
-                    repository=discovered.repository,
-                    file_path=discovered.relative_path,
-                    source_name=discovered.source_name,
-                    language=discovered.language,
-                    size_bytes=discovered.size_bytes,
-                    mtime_ns=discovered.mtime_ns,
-                    file_hash=file_hash,
-                    parser_version=settings.parser_version,
-                    chunker_version=settings.chunker_version,
-                    chunk_ids_json=json.dumps(chunk_ids),
-                )
-                files_processed += 1
-
-            files_parsed += 1
-            consecutive_errors = 0
-
-        except ConnectionError:
-            raise  # Meilisearch down — abort entire run
-        except Exception:
-            errors += 1
-            consecutive_errors += 1
-            msg = f"{discovered.source_name}:{discovered.relative_path}"
-            error_details.append(msg)
-            log.exception("Error processing %s", msg)
-            if consecutive_errors >= 10:
-                raise RuntimeError(
-                    f"Aborting: {consecutive_errors} consecutive errors. "
-                    "Check log output for details."
-                ) from None
-
-    # 6. Clean up stale files (only when processing ALL repos, not truncated
-    # by max_files — scoped ingests must not delete data from other repos)
-    chunks_deleted = 0
-    if not dry_run and repo_name is None and max_files == 0:
-        chunks_deleted = _cleanup_stale_code(settings, state_db, paths_by_repo)
-
-    # 7. Finish run log
-    finish_run(
-        state_db,
-        run_id,
-        files_processed=files_processed,
-        files_skipped=files_skipped,
-        chunks_upserted=total_chunks_upserted,
-        chunks_deleted=chunks_deleted,
-        errors=errors,
-        error_details=error_details or None,
-    )
+            run_id,
+            files_processed=files_processed,
+            files_skipped=files_skipped,
+            chunks_upserted=total_chunks_upserted,
+            chunks_deleted=chunks_deleted,
+            errors=errors,
+            error_details=error_details or None,
+        )
 
     log.info(
         "ingest-code complete: %d processed, %d skipped, %d chunks upserted, "

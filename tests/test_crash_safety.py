@@ -39,6 +39,7 @@ from erd_index.state.manifest_db import (
     init_state_db,
     upsert_indexed_file,
 )
+from erd_index.state.run_log import get_recent_runs
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -392,6 +393,52 @@ class TestDryRunAbortThreshold:
         ):
             with pytest.raises(RuntimeError, match=r"Aborting.*10 consecutive errors"):
                 ingest_markdown(settings, dry_run=True)
+
+
+# ===================================================================
+# 3b. run_log finalized on abort
+# ===================================================================
+
+
+class TestRunLogFinalizedOnAbort:
+    """run_log rows must have finished_at set even when ingest aborts."""
+
+    def test_run_log_finalized_after_consecutive_error_abort(
+        self, tmp_path: Path,
+    ) -> None:
+        """10 consecutive errors abort, but finish_run still runs via finally."""
+        settings = _make_settings(tmp_path)
+        state_db = init_state_db(settings)
+
+        failing_files = [
+            DiscoveredFile(
+                absolute_path=tmp_path / f"bad_{i}.md",
+                relative_path=f"bad_{i}.md",
+                source_name="test",
+                repository="",
+                language="markdown",
+                size_bytes=10,
+                mtime_ns=1000,
+            )
+            for i in range(10)
+        ]
+
+        with (
+            patch("erd_index.pipeline.ensure_index"),
+            patch("erd_index.pipeline._discover_markdown_files", return_value=failing_files),
+            patch(
+                "erd_index.pipeline._process_markdown_file",
+                side_effect=ValueError("bad file"),
+            ),
+        ):
+            with pytest.raises(RuntimeError, match=r"Aborting.*10 consecutive"):
+                ingest_markdown(settings)
+
+        # The run_log row should be finalized (finished_at is not NULL)
+        runs = get_recent_runs(state_db, limit=1)
+        assert len(runs) == 1
+        assert runs[0]["finished_at"] is not None
+        assert runs[0]["errors"] == 10
 
 
 # ===================================================================
