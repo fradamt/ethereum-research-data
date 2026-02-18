@@ -34,10 +34,18 @@ def walk_sources(settings: Settings) -> Iterator[DiscoveredFile]:
 
     Files are yielded sorted by (source_name, relative_path) for deterministic
     ordering across runs.
+
+    In addition to explicitly configured ``corpus_sources``, any subdirectory
+    of ``corpus/`` that contains ``.md`` files and is not already covered by a
+    configured source is auto-discovered as a drop-in corpus source.  This
+    matches the QMD auto-discovery behaviour.
     """
     results: list[DiscoveredFile] = []
 
-    for source in settings.corpus_sources:
+    all_corpus_sources = list(settings.corpus_sources)
+    all_corpus_sources.extend(_auto_discover_corpus_sources(settings))
+
+    for source in all_corpus_sources:
         results.extend(_walk_corpus_source(source, settings.project_root))
 
     for repo in settings.code_repos:
@@ -45,6 +53,40 @@ def walk_sources(settings: Settings) -> Iterator[DiscoveredFile]:
 
     results.sort(key=lambda f: (f.source_name, f.relative_path))
     yield from results
+
+
+def _auto_discover_corpus_sources(settings: Settings) -> list[CorpusSource]:
+    """Scan ``corpus/`` for subdirectories not already in *settings.corpus_sources*.
+
+    A subdirectory qualifies as a drop-in corpus source if it contains at
+    least one ``.md`` file (non-recursive check for speed).
+    """
+    corpus_root = settings.project_root / settings.corpus_dir
+    if not corpus_root.is_dir():
+        return []
+
+    configured_names = {s.name for s in settings.corpus_sources}
+    discovered: list[CorpusSource] = []
+
+    for subdir in sorted(corpus_root.iterdir()):
+        if not subdir.is_dir():
+            continue
+        if subdir.name in configured_names:
+            continue
+        # Check if the directory contains .md files
+        if any(subdir.glob("*.md")):
+            relative_path = f"{settings.corpus_dir}/{subdir.name}"
+            discovered.append(CorpusSource(
+                name=subdir.name,
+                path=relative_path,
+            ))
+            log.info(
+                "Auto-discovered corpus source %r at %s",
+                subdir.name,
+                relative_path,
+            )
+
+    return discovered
 
 
 def _walk_corpus_source(

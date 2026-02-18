@@ -105,6 +105,25 @@ uv run ruff format .
 uv run mypy erd_index/
 ```
 
+## Scheduling updates
+
+To keep the corpus fresh automatically, add a cron job (or launchd plist on
+macOS). Examples:
+
+```bash
+# Weekly corpus refresh — scrape forums and convert to markdown (Sunday 3am)
+0 3 * * 0  cd /path/to/ethereum-research-data && scripts/refresh.sh >> /tmp/erd-refresh.log 2>&1
+
+# Daily incremental Meilisearch sync (4am)
+0 4 * * *  cd /path/to/ethereum-research-data && ./scripts/index_meili.sh >> /tmp/erd-index.log 2>&1
+
+# Monthly full reindex (1st of month, 5am)
+0 5 1 * *  cd /path/to/ethereum-research-data && uv run erd-index sync --no-incremental >> /tmp/erd-full.log 2>&1
+```
+
+Adjust paths and schedules to taste. The scraper and indexer are both
+incremental, so frequent runs are inexpensive.
+
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the corpus pipeline design and

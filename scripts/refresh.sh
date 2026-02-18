@@ -6,6 +6,9 @@
 
 set -e
 
+python3 -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" 2>/dev/null \
+  || { echo "Error: Python 3.10+ is required"; exit 1; }
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -29,4 +32,5 @@ fi
 
 echo ""
 echo "Done. Corpus updated."
-echo "Run 'scripts/setup_qmd.sh' to reindex for search."
+echo "Run './scripts/index_meili.sh' to update the Meilisearch search index."
+echo "Run 'scripts/setup_qmd.sh' to update QMD collections (if using QMD)."

@@ -518,7 +518,7 @@ class DiscourseConverter:
                 continue
             try:
                 result = self.convert_topic(path)
-            except (json.JSONDecodeError, KeyError) as exc:
+            except Exception as exc:
                 print(f"  Skipping {path.name}: {exc}")
                 skipped += 1
                 continue

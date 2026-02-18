@@ -27,8 +27,6 @@ schema_version = 1
 parser_version = "0.1.0"
 chunker_version = "0.1.0"
 
-# Code repositories to index
-# Each entry: logical name -> local path + language
 # Code repositories to index.
 # Paths are relative to project_root or absolute. Use ~ for home directory.
 # Repos that don't exist on disk are silently skipped during sync.
@@ -80,3 +78,12 @@ include = ["**/*.md"]
 name = "eips"
 path = "corpus/eips"
 include = ["eip-*.md"]
+
+# To index your own markdown files, add a corpus_sources entry:
+# [[corpus_sources]]
+# name = "my-notes"
+# path = "corpus/my-notes"
+# include = ["**/*.md"]
+#
+# Or simply place a directory of .md files under corpus/ — the indexer
+# will auto-discover it during sync.
