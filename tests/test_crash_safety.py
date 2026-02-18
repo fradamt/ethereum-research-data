@@ -440,6 +440,44 @@ class TestRunLogFinalizedOnAbort:
         assert runs[0]["finished_at"] is not None
         assert runs[0]["errors"] == 10
 
+    def test_connection_error_records_error_in_run_log(
+        self, tmp_path: Path,
+    ) -> None:
+        """ConnectionError abort records errors > 0 in run_log, not a clean run."""
+        settings = _make_settings(tmp_path)
+        state_db = init_state_db(settings)
+
+        files = [
+            DiscoveredFile(
+                absolute_path=tmp_path / "doc.md",
+                relative_path="doc.md",
+                source_name="test",
+                repository="",
+                language="markdown",
+                size_bytes=10,
+                mtime_ns=1000,
+            ),
+        ]
+
+        with (
+            patch("erd_index.pipeline.ensure_index"),
+            patch("erd_index.pipeline._discover_markdown_files", return_value=files),
+            patch(
+                "erd_index.pipeline._process_markdown_file",
+                side_effect=ConnectionError("Meilisearch down"),
+            ),
+        ):
+            with pytest.raises(ConnectionError):
+                ingest_markdown(settings)
+
+        runs = get_recent_runs(state_db, limit=1)
+        assert len(runs) == 1
+        assert runs[0]["finished_at"] is not None
+        assert runs[0]["errors"] >= 1
+        # error_details should mention ConnectionError
+        assert runs[0]["error_details"] is not None
+        assert "ConnectionError" in runs[0]["error_details"]
+
 
 # ===================================================================
 # 4. build_graph circuit breaker

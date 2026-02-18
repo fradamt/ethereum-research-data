@@ -171,7 +171,9 @@ def ingest_markdown(
                 files_parsed += 1
                 consecutive_errors = 0
 
-            except ConnectionError:
+            except ConnectionError as exc:
+                errors += 1
+                error_details.append(f"ConnectionError: {exc}")
                 raise  # Meilisearch down — abort entire run
             except Exception:
                 errors += 1
@@ -444,7 +446,9 @@ def ingest_code(
                 files_parsed += 1
                 consecutive_errors = 0
 
-            except ConnectionError:
+            except ConnectionError as exc:
+                errors += 1
+                error_details.append(f"ConnectionError: {exc}")
                 raise  # Meilisearch down — abort entire run
             except Exception:
                 errors += 1
