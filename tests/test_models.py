@@ -85,6 +85,7 @@ class TestEnums:
         assert SourceKind.FORUM.value == "forum"
         assert SourceKind.EIP.value == "eip"
         assert SourceKind.CODE.value == "code"
+        assert SourceKind.GENERIC.value == "generic"
 
     def test_source_kind_is_str_enum(self) -> None:
         assert isinstance(SourceKind.FORUM, str)
@@ -208,6 +209,20 @@ class TestDocId:
         )
         assert chunk.doc_id == "doc:annotated-spec:phase0/beacon-chain.md"
         assert not chunk.doc_id.startswith("forum:")
+
+    def test_generic_doc_id(self) -> None:
+        """GENERIC source kind uses path-based doc_id."""
+        chunk = Chunk(
+            source_kind=SourceKind.GENERIC,
+            chunk_kind=ChunkKind.MD_HEADING,
+            source_name="vault",
+            language=Language.MARKDOWN,
+            path="research-notes.md",
+            text="test",
+            start_line=1,
+            end_line=1,
+        )
+        assert chunk.doc_id == "doc:vault:research-notes.md"
 
 
 # ===================================================================

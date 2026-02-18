@@ -17,6 +17,7 @@ class SourceKind(str, Enum):
     FORUM = "forum"
     EIP = "eip"
     CODE = "code"
+    GENERIC = "generic"
 
 
 class ChunkKind(str, Enum):
@@ -169,11 +170,11 @@ class Chunk(BaseModel):
         if self.source_kind == SourceKind.FORUM:
             if self.topic_id is not None:
                 return f"forum:{self.source_name}:{self.topic_id}"
-            # Non-forum corpus sources classified as FORUM lack topic_id;
-            # fall back to path-based doc_id to avoid collisions.
             return f"doc:{self.source_name}:{self.path}"
         if self.source_kind == SourceKind.EIP:
             return f"eip:{self.eip}" if self.eip is not None else f"eip:unknown:{self.path}"
+        if self.source_kind == SourceKind.GENERIC:
+            return f"doc:{self.source_name}:{self.path}"
         return f"code:{self.repository}:{self.path}"
 
     @computed_field  # type: ignore[prop-decorator]

@@ -34,6 +34,9 @@ def _resolve_node_type(chunk: Chunk) -> str:
             return "forum_post"
         return "forum_topic"
 
+    if chunk.source_kind == SourceKind.GENERIC:
+        return "doc_section"
+
     if chunk.source_kind == SourceKind.EIP:
         if chunk.chunk_kind == ChunkKind.EIP_SECTION:
             # Top-level EIP node has no heading_path or the heading_path is the title

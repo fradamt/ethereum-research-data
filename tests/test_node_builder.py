@@ -191,6 +191,29 @@ class TestForumChunkToNode:
 
 
 # ===================================================================
+# GENERIC chunk -> node
+# ===================================================================
+
+
+class TestGenericChunkToNode:
+    def test_generic_node_type(self) -> None:
+        chunk = Chunk(
+            source_kind=SourceKind.GENERIC,
+            chunk_kind=ChunkKind.MD_HEADING,
+            source_name="vault",
+            language=Language.MARKDOWN,
+            path="research-notes.md",
+            text="# Notes\nContent here.",
+            start_line=1,
+            end_line=2,
+            heading_path=["Notes"],
+        )
+        node = chunk_to_node(chunk)
+        assert node["node_type"] == "doc_section"
+        assert node["source_name"] == "vault"
+
+
+# ===================================================================
 # EIP chunk -> node
 # ===================================================================
 

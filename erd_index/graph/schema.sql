@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS node (
   node_id       TEXT PRIMARY KEY,
   node_type     TEXT NOT NULL CHECK (node_type IN (
     'forum_topic', 'forum_post', 'eip', 'eip_section',
+    'doc_section',
     'code_function', 'code_struct', 'code_enum',
     'code_trait', 'code_impl', 'code_class'
   )),

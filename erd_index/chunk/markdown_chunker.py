@@ -188,6 +188,7 @@ def _chunk_kind_for(unit: ParsedUnit) -> ChunkKind:
         return ChunkKind.EIP_SECTION
     if unit.source_kind == SourceKind.FORUM and unit.post_number and unit.post_number > 1:
         return ChunkKind.MD_REPLY
+    # FORUM (topic opener), GENERIC, and any other markdown source
     return ChunkKind.MD_HEADING
 
 
