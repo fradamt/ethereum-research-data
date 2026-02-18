@@ -1,0 +1,129 @@
+---
+source: magicians
+topic_id: 11940
+title: "EIP-6036: Subscribeable NFT Extension"
+author: aboutmydreams
+date: "2022-11-30"
+category: EIPs
+tags: [nft]
+url: https://ethereum-magicians.org/t/eip-6036-subscribeable-nft-extension/11940
+views: 543
+likes: 0
+posts_count: 1
+---
+
+# EIP-6036: Subscribeable NFT Extension
+
+## Abstract
+
+This EIP standardizes an interface extending EIP-721 that allows for NFTs to be temporarily purchased.
+
+## Motivation
+
+Currently, our NFT is mainly sold under a retail-based business model, but beyond that, subscription-based business models are particularly important in digital consumption scenarios. For example, we have subscriptions to Netflix for movies and TV, Spotify for music, and Sam’s Club for membership. Subscription-based business models are particularly important.
+
+This EIP is a set of standards based on the subscription type of NFT starting from.
+
+## Specification
+
+```solidity
+interface IERC6036 {
+    event TokenExpire(address indexed owner, uint indexed tokenId);
+    event SubscribeTokenUpdate(uint tokenId, uint expiration);
+    function extendTokenSubscription(uint tokenId, uint time) external payable;
+    function revokeTokenSubscription(uint tokenId) external;
+    function hasExpired(uint tokenId) external view returns (bool);
+    function tokenExpiration(uint tokenId) external view returns (uint);
+}
+```
+
+`TokenExpire` means the expiration of a token, this is an event that should be thrown when the token expires.
+
+`SubscribeTokenUpdate` means the expiration of a token, this is an event that token’s expires time update.
+
+`extendTokenSubscription` is an only way to new subscribe or renew a token, and it needs a unit parameter to specify the renewal time.
+
+`revokeTokenSubscription` is an only way to revoke a token and it does not mean that the token needs to be burned.
+
+`hasExpired` is used to judge whether the rights and interests represented by the token are still valid.
+
+`tokenExpiration` is used to query the expiration time of the rights and interests represented by a token.
+
+## Rationale
+
+### Uniqueness
+
+Different users need unique asset certification, which represents their exclusive service on a certain platform, not limited to expiration time.
+
+### Subscribeability
+
+When a user’s benefit is about to expire, he needs to purchase the usage time of the benefit, so we need to add a renewal interface.
+
+### Verifiability
+
+When an equity manager can be subscribed, it has an expiration time. We need an interface to determine whether the user’s equity is within the time range that can be implemented.
+
+### Recallability
+
+Recallability is an important part of the subscription-based business model, where we are triggered by event `TokenExpire` that tell the platform which tokens from which wallet are currently expired.
+
+## Backwards Compatibility
+
+This is a new token type and is not meant to be backward compatible with any existing tokens other than existing viable souls like EIP-721 tokens.
+
+## Reference Implementation
+
+```solidity
+contract SubNFT is ERC721, ERC721sub, Ownable {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIds;
+    constructor() ERC721("IERC721sub", "Sub") ERC721sub(0.01 ether, 7 days) {}
+    /* Minting tokens for subscribable functionality */
+    function mintAndSubscribe(address player, string memory tokenURI)
+        public
+        payable
+        returns (uint256)
+    {
+        uint256 newItemId = _tokenIds.current();
+        _mint(player, newItemId);
+        _setTokenURI(newItemId, tokenURI);
+        _tokenSubscribeExtend(player, newItemId, 7 days);
+        _tokenIds.increment();
+        emit SubscribeTokenUpdate(newItemId, block.timestamp + 7 days);
+        return newItemId;
+    }
+    /* Modify subscription configuration */
+    function changeSubscribeConfig(uint _time, uint _subscribePrice)
+        public
+        onlyOwner
+    {
+        _changeSubscribeConfig(_time, _subscribePrice);
+    }
+    function subscribeServiceWrapper() public returns(bool) {
+        bool isExpired = _beforeSubscribeService(tokenId);
+        if(!isExpired){
+            _subscribeService();
+        }
+        return isExpired;
+    }
+    function _subscribeService() internal{
+        // service module
+    }
+    function _beforeSubscribeService(uint tokenId) internal returns (bool){
+        bool isExpired = this.hasExpired(tokenId);
+        if(isExpired){
+            address owner = this.ownerOf(tokenId);
+            emit TokenExpire(owner, isExpired);
+        }
+        return isExpired;
+    }
+}
+```
+
+## Security Considerations
+
+Users of tokens that claim to implement this EIP must be diligent in verifying they actually do. A token author can create a token that, upon initial probing of the API surface, may appear to follow the rules when in reality it doesn’t. For example, the contract could allow transfers via some mechanism and simply not utilize them initially.
+
+## Copyright
+
+Copyright and related rights waived via CC0.

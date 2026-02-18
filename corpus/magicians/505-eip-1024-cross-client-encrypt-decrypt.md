@@ -1,0 +1,362 @@
+---
+source: magicians
+topic_id: 505
+title: "EIP-1024: Cross-client Encrypt/Decrypt"
+author: topealabi
+date: "2018-06-05"
+category: EIPs
+tags: []
+url: https://ethereum-magicians.org/t/eip-1024-cross-client-encrypt-decrypt/505
+views: 6099
+likes: 7
+posts_count: 3
+---
+
+# EIP-1024: Cross-client Encrypt/Decrypt
+
+> ```
+> eip: 1024
+> title: Add web3.eth.encrypt and web3.eth.decrypt functions
+> author: Tope Alabi
+> status: Draft
+> type: Interface Track
+> created: 2018-05-14
+> ```
+
+
+
+      [github.com/ethereum/EIPs](https://github.com/ethereum/EIPs/pull/1098)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####
+
+
+      `master` ← `topealabi:encryption`
+
+
+
+
+          opened 07:46PM - 18 May 18 UTC
+
+
+
+          [![](https://ethereum-magicians.org/uploads/default/original/2X/d/d9b0c97a67cc9065dc7feff7b23d0b2bb7380ce4.png)
+            topealabi](https://github.com/topealabi)
+
+
+
+          [+102
+            -0](https://github.com/ethereum/EIPs/pull/1098/files)
+
+
+
+
+
+
+
+```
+eip: 1024
+title: Add web3.eth.encrypt and web3.eth.decrypt functions
+auth[…](https://github.com/ethereum/EIPs/pull/1098)or: Tope Alabi <alabitemitope@gmail.com>
+status: Draft
+type: Interface
+created: 2018-05-14
+```
+
+### Abstract
+This EIP proposes a cross-client method for requesting encryption/decryption. This method will include a version parameter, so that different encryption methods can be added under the same name. Nacl is a cryptographically complete and well audited library that works well for this by implementers are free to choose their crypto. Ethereum keypairs should not be used directly for encryption, instead we should derive an encryption keypair from the account's private key for decryption and generate a random ephemeral keypair for encryption.
+
+Parity wallet already implements a compatible [encrypt/decrypt]  https://wiki.parity.io/JSONRPC-parity-module#parity_decryptmessage method and the MetaMask version is on the way. Having a cross-client standard will enable a whole new wave of decentralized applications that will allow users to securely store their private data in public databases such as IPFS.
+
+### Motivation
+Imagine an illegal immigrant named Martha. Martha moved to the United States illegally but then had 2 children there, so her children are citizens. One day Martha gets arrested and deported but her children get to stay. How will Martha pass power of Attorney, bank account info, identification docs, and other sensitive information to her children? Storing that data in a centralized database can be incriminating for Martha, so maybe decentralized databases like IPFS could help, but if the data is not encrypted anyone can see it, which kind of defeats the purpose. If Martha had access to a Dapp with end-to-end encryption connected to her identity, she could save her data in a decentralized, censor-proof database and still have confidence that only her children can access it.
+
+More casually, Martha can create a treasure hunt game, or a decentralized chat app etc.
+
+### Specification
+
+```
+
+const nacl = require('tweetnacl')
+
+/**
+* Returns user's public Encryption key derived from privateKey Ethereum key
+* @param {Account} receiver - The Ethereum account that will be recieving/decrypting the data
+*/
+web3.eth.getEncryptionPublicKey(receiver.address) { /* implementation */ }
+
+/**
+* Encrypts plain data.
+* @param {string} encryptionPublicKey - The encryption public key of the receiver
+* @param {string} version - A unique string identifying the encryption strategy.
+* @param {Bytes} data - The data to encrypt
+* @param {Number} padding - The number of characters to left-pad the data with (optional)
+* @param {Function} callback - The function to call back when decryption is complete.
+*/
+web3.eth.encrypt(encryptionPublicKey, version, data, padding, callback) { /* implementation */ }
+
+/**
+* Decrypts some encrypted data.
+* @param {Account} receiver - The account that will decrypt the message
+* @param {Object} encryptedData - Encrypted payload, the data to decrypt
+* @param {Function} callback - The function to call back when decryption is complete.
+*/
+web3.eth.decrypt = function decrypt (recievier.privatekey, encryptedData, callback) { /* implementation */ }
+```
+
+**To Encrypt:**
+- Alice requests Bob's publicEncryptionKey
+- Bob generates his encryptionKeypair using nacl.box.keyPair.fromSecretKey(bob.ethereumPrivateKey)
+- Bob sends Alice his encryptionKeyPair.publicKey
+- Alice generates a random ephemeralKeyPair
+- Alice uses her ephemeralKeypair.secretKey and Bob's encryptionPublicKey to encrypt the data using nacl.box. She sends him an encrypted blob of the form:
+
+```
+{ version: 'x25519-xsalsa20-poly1305',
+  nonce: '1dvWO7uOnBnO7iNDJ9kO9pTasLuKNlej',
+  ephemPublicKey: 'FBH1/pAEHOOW14Lu3FWkgV3qOEcuL78Zy+qW1RwzMXQ=',
+  ciphertext: 'f8kBcl/NCyf3sybfbwAKk/np2Bzt9lRVkZejr6uh5FgnNlH/ic62DZzy' }
+```
+
+**To Decrypt:**
+- Bob generates his encryptionPrivatekey using nacl.box.keyPair.fromSecretKey(bob.ethereumPrivateKey).secretKey
+- Bob passes his encryptionPrivateKey along with the encrypted blob to nacl.box.open(ciphertext, nonce, ephemPublicKey, myencryptionPrivatekey)
+
+### Rationale
+These methods should require user confirmation. We include the versioning to allow different encryption/decryption types to be added under the same method name. For example, it might make sense to have a few kinds of decrypt methods, for different kinds of consent:
+- Consent to download a decrypted file.
+- Consent to return decrypted file to the current site.
+- Consent to return any number of decrypted messages to the current site over a certain period of time. (could enable chat apps)
+
+### Backwards Compatibility
+Parity implements an encrypt/decrypt method with a different curve than the one which is intended in this proposal, but that it would be possible to add support for curves to this standard.
+ https://wiki.parity.io/JSONRPC-parity-module#parity_decryptmessage
+
+### Test Cases
+`getEncryptionPublicKey(7e5374ec2ef0d91761a6e72fdf8f6ac665519bfdf6da0a2329cf0d804514b816)` should return a public encryption key of the form `"C5YMNdqE4kLgxQhJO1MfuQcHP5hjVSXzamzd/TxlR0U="`
+
+`web3.eth.encrypt("C5YMNdqE4kLgxQhJO1MfuQcHP5hjVSXzamzd/TxlR0U=", 'x25519-xsalsa20-poly1305-v1', {data: 'My name is Satoshi Buterin'})` should return a blob of the form `{ version: 'x25519-xsalsa20-poly1305',
+  nonce: '1dvWO7uOnBnO7iNDJ9kO9pTasLuKNlej',
+  ephemPublicKey: 'FBH1/pAEHOOW14Lu3FWkgV3qOEcuL78Zy+qW1RwzMXQ=',
+  ciphertext: 'f8kBcl/NCyf3sybfbwAKk/np2Bzt9lRVkZejr6uh5FgnNlH/ic62DZzy' }`
+
+`web3.eth.decrypt('7e5374ec2ef0d91761a6e72fdf8f6ac665519bfdf6da0a2329cf0d804514b816',
+{ version: 'x25519-xsalsa20-poly1305',
+  nonce: '1dvWO7uOnBnO7iNDJ9kO9pTasLuKNlej',
+  ephemPublicKey: 'FBH1/pAEHOOW14Lu3FWkgV3qOEcuL78Zy+qW1RwzMXQ=',
+  ciphertext: 'f8kBcl/NCyf3sybfbwAKk/np2Bzt9lRVkZejr6uh5FgnNlH/ic62DZzy' })` should return plain text/file of the form `{ data:'My name is Satoshi Buterin' }`
+
+### Implementation
+Parity wallet has already implemented a compatible encryption/decryption method. The Metamask version will be published soon.
+https://github.com/topealabi/eth-sig-util/blob/master/index.js
+
+## Copyright
+Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+
+
+
+
+
+
+
+
+
+
+
+**Abstract**
+
+This EIP proposes a cross-client method for requesting encryption/decryption. This method will include a version parameter, so that different encryption methods can be added under the same name. Nacl is a cryptographically complete and well audited library that works well for this by implementers are free to choose their crypto. Ethereum keypairs should not be used directly for encryption, instead we should derive an encryption keypair from the account’s private key for decryption and generate a random ephemeral keypair for encryption.
+
+Parity wallet already implements a compatible [encrypt/decrypt] https://wiki.parity.io/JSONRPC-parity-module#parity_decryptmessage method and the MetaMask version is on the way. Having a cross-client standard will enable a whole new wave of decentralized applications that will allow users to securely store their private data in public databases such as IPFS.
+
+**Motivation**
+
+Imagine an illegal immigrant named Martha. Martha moved to the United States illegally but then had 2 children there, so her children are citizens. One day Martha gets arrested and deported but her children get to stay. How will Martha pass power of Attorney, bank account info, identification docs, and other sensitive information to her children? Storing that data in a centralized database can be incriminating for Martha, so maybe decentralized databases like IPFS could help, but if the data is not encrypted anyone can see it, which kind of defeats the purpose. If Martha had access to a Dapp with end-to-end encryption connected to her identity, she could save her data in a decentralized, censor-proof database and still have confidence that only her children can access it.
+
+More casually, Martha can create a treasure hunt game, or a decentralized chat app etc.
+
+**Specification**
+
+```
+const nacl = require('tweetnacl')
+
+/**
+* Returns user's public Encryption key derived from privateKey Ethereum key
+* @param {Account} reciever - The Ethereum account that will be recieving/decrypting the data
+*/
+web3.eth.getEncryptionPublicKey(reciever.privateKey) { /* implementation */ }
+
+/**
+* Encrypts plain data.
+* @param {string} encryptionPublicKey - The encryption public key of the reciever
+* @param {string} version - A unique string identifying the encryption strategy.
+* @param {Object} data - The data to encrypt
+* @param {Function} callback - The function to call back when decryption is complete.
+*/
+web3.eth.encrypt(encryptionPublicKey, version, data, callback) { /* implementation */ }
+
+/**
+* Decrypts some encrypted data.
+* @param {Account} reciever - The account that will decrypt the message
+* @param {Object} encryptedData - The data to decrypt
+* @param {Function} callback - The function to call back when decryption is complete.
+*/
+web3.eth.decrypt = function decrypt (recievier.privatekey, encryptedData, callback) { /* implementation */ }
+```
+
+**To Encrypt:**
+
+Alice requests Bob’s publicEncryptionKey
+
+Bob generates his encryptionKeypair using nacl.box.keyPair.fromSecretKey(bob.ethereumPrivateKey)
+
+Bob sends Alice his encryptionKeyPair.publicKey
+
+Alice generates a random ephemeralKeyPair
+
+Alice uses her ephemeralKeypair.secretKey and Bob’s encryptionPublicKey to encrypt the data using nacl.box. She sends him an encrypted blob of the form:
+
+{ version: ‘x25519-xsalsa20-poly1305’,
+
+nonce: ‘1dvWO7uOnBnO7iNDJ9kO9pTasLuKNlej’,
+
+ephemPublicKey: ‘FBH1/pAEHOOW14Lu3FWkgV3qOEcuL78Zy+qW1RwzMXQ=’,
+
+ciphertext: ‘f8kBcl/NCyf3sybfbwAKk/np2Bzt9lRVkZejr6uh5FgnNlH/ic62DZzy’ }
+
+**To Decrypt:**
+
+Bob generates his encryptionPrivatekey using nacl.box.keyPair.fromSecretKey(bob.ethereumPrivateKey).secretKey
+
+Bob passes his encryptionPrivateKey along with the encrypted blob to nacl.box.open(ciphertext, nonce, ephemPublicKey, myencryptionPrivatekey)
+
+Rationale
+
+These methods should require user confirmation. We include the versioning to allow different encryption/decryption types to be added under the same method name. For example, it might make sense to have a few kinds of decrypt methods, for different kinds of consent:
+
+Consent to download a decrypted file.
+
+Consent to return decrypted file to the current site.
+
+Consent to return any number of decrypted messages to the current site over a certain period of time. (could enable chat apps)
+
+Backwards Compatibility
+
+Parity implements an encrypt/decrypt method with a different curve than the one which is intended in this proposal, but that it would be possible to add support for curves to this standard.
+
+https://wiki.parity.io/JSONRPC-parity-module#parity_decryptmessage
+
+**Test Cases**
+
+```
+getEncryptionPublicKey(7e5374ec2ef0d91761a6e72fdf8f6ac665519bfdf6da0a2329cf0d804514b816) should return a public encryption key of the form "C5YMNdqE4kLgxQhJO1MfuQcHP5hjVSXzamzd/TxlR0U="
+
+web3.eth.encrypt("C5YMNdqE4kLgxQhJO1MfuQcHP5hjVSXzamzd/TxlR0U=", 'x25519-xsalsa20-poly1305-v1', {data: 'My name is Satoshi Buterin'}) should return a blob of the form { version: 'x25519-xsalsa20-poly1305', nonce: '1dvWO7uOnBnO7iNDJ9kO9pTasLuKNlej', ephemPublicKey: 'FBH1/pAEHOOW14Lu3FWkgV3qOEcuL78Zy+qW1RwzMXQ=', ciphertext: 'f8kBcl/NCyf3sybfbwAKk/np2Bzt9lRVkZejr6uh5FgnNlH/ic62DZzy' }
+
+web3.eth.decrypt('7e5374ec2ef0d91761a6e72fdf8f6ac665519bfdf6da0a2329cf0d804514b816', { version: 'x25519-xsalsa20-poly1305', nonce: '1dvWO7uOnBnO7iNDJ9kO9pTasLuKNlej', ephemPublicKey: 'FBH1/pAEHOOW14Lu3FWkgV3qOEcuL78Zy+qW1RwzMXQ=', ciphertext: 'f8kBcl/NCyf3sybfbwAKk/np2Bzt9lRVkZejr6uh5FgnNlH/ic62DZzy' }) should return plain text/file of the form { data:'My name is Satoshi Buterin' }
+```
+
+**Implementation**
+
+Parity wallet has already implemented a compatible encryption/decryption method. The Metamask version will be published soon.
+
+
+
+      [github.com/topealabi/eth-sig-util](https://github.com/topealabi/eth-sig-util/blob/master/index.js)
+
+
+
+
+
+####
+
+  [master](https://github.com/topealabi/eth-sig-util/blob/master/index.js)
+
+
+
+```js
+const ethUtil = require('ethereumjs-util');
+const ethAbi = require('ethereumjs-abi');
+const nacl = require('tweetnacl');
+nacl.util = require('tweetnacl-util');
+
+const TYPED_MESSAGE_SCHEMA = {
+  type: 'object',
+  properties: {
+    types: {
+      type: 'object',
+      additionalProperties: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: {type: 'string'},
+            type: {type: 'string'},
+          },
+          required: ['name', 'type'],
+        },
+```
+
+  This file has been truncated. [show original](https://github.com/topealabi/eth-sig-util/blob/master/index.js)
+
+
+
+
+
+
+
+
+
+
+**Copyright**
+
+Copyright and related rights waived via CC0.
+
+## Replies
+
+**hskang9** (2019-11-23):
+
+Hey, I made an implementation in rust for this. Could you check if this is the right implementation?
+
+
+
+      [github.com](https://github.com/hskang9/eip-1024)
+
+
+
+
+  ![image](https://opengraph.githubassets.com/bf6123e77950659fe2cc06c15f455116/hskang9/eip-1024)
+
+
+
+###
+
+
+
+EIP 1024 in rust
+
+---
+
+**jpitts** (2020-01-21):
+
+An [@austingriffith](/u/austingriffith) Twitter mega thread should be referenced here:
+
+https://twitter.com/austingriffith/status/1079406563582824449
+
+Also:
+
+https://twitter.com/ASvanevik/status/1219243754697216000
+

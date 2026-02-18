@@ -1,0 +1,341 @@
+---
+source: magicians
+topic_id: 9172
+title: EIP-5075 - Limit Token Outflows within Timeframe to Limit Hack Losses
+author: pr0toshi
+date: "2022-05-05"
+category: EIPs
+tags: []
+url: https://ethereum-magicians.org/t/eip-5075-limit-token-outflows-within-timeframe-to-limit-hack-losses/9172
+views: 1115
+likes: 0
+posts_count: 4
+---
+
+# EIP-5075 - Limit Token Outflows within Timeframe to Limit Hack Losses
+
+## Abstract
+
+An inheritable implementation for a rate limiter using a new `transferL` function which replaces all asset outflow transfer functions to unknown external addresses. By limiting asset outflows for all assets in a contract within a customizable timeframe, contracts that suffer from hacks will have losses limited to the given `rateLimit` parameter, which is dynamic and relative to a contract’s net total assets, being tracked at the per asset level.
+
+Limiting outflows within given timeframes to external addresses stops both single transaction vulnerabilities which drain all funds, as well as those which are not single transaction/flash loan based and may be performed throughout a given timeframe. By delaying and limiting outflows, teams will have time to respond with the security mechanisms in contracts determined by the teams (upgrades, freezes, not rate limited `onlyOwner` multisig based withdrawals), limiting losses by users.
+
+This EIP includes an optional whitelist functionality.
+
+## Motivation
+
+The cryptocurrency ecosystem continues to suffer from record-setting losses due to attacks, often using single or multi-transaction exploits (with flash loans, for example), to rapidly withdraw more funds than intended. While there are often mechanisms implemented to freeze a contract in the aftermath of an attack, these types of attacks cannot be limited or stopped in real-time or mid-transaction.
+
+This EIP creates a simple, plug-and-play layer of protection that limits outflows to the intended expected limits, and reverts should these limits be exceeded. This will limit the extent of the damage in the event of a fund-draining vulnerability. The function has been optimized to have minimal overhead on transfers and is intended to replace transfer functions throughout contracts.
+
+## Specification
+
+### Methods
+
+### transferL
+
+Transfers _amount of tokens to address _to, and SHOULD limit the _amount to less than the
+
+```auto
+rateLimit * contract token balance - (token outflow - contract balance * rateLimit / (timeLimit / (current timestamp - last outflow timestamp)).
+```
+
+Implementations MAY use alternative ways to limit outflow within time frames. Some alternatives may be taking the usual volume and limit to 2 std, or may have some other parameters around influencing the limit for outflows. The spirit around having a final fallback plan for fns which allow any outflows post hack only being able to transfer out a limited amount vs full balance to protect the contract should there be a vulnerability, which unlocks the ability to withdraw more than intended should be the core concept taken away rather than a specific implementation or expectation on those limitations.
+
+The function MUST throw or revert if the amount would be higher than the allowed rateLimit within the last timeLimit timeframe.
+
+Note Transfers of 0 values MUST be treated as normal transfers and fire the Transfer event as well as MUST update the token outflow based on the time passed since last outflow.
+
+Note Transfers from specified addresses MAY skip the outflow and rate limit checks, with the addresses being able to be updated by owner or some other mechanism.
+
+Contracts SHALL replace all ETH and Token based transfers with transferL where the transfers are to unknown external addresses or are publicly accessible.
+
+```auto
+function transferL(address _to, uint256 _amount, address _token) public returns (bool success)
+```
+
+### getLimitLeft
+
+Returns the amount allowed within the rate limited transfer allowance for the current time with current outflow.
+
+```auto
+function getLimitLeft(address token) public view returns (uint256 rateLeft)
+```
+
+### whitelist
+
+Allows an address or addresses to whitelist other addresses as msg.sender to not be rate limited. OPTIONAL - This allows for an owner or other mechanism to allow contracts such as YEARN to be able to move positions or manage positions without affecting or being affected by the rate limit and out flows. Use with caution and for contracts with known deployed bytecode and that have been verified to not be malicious or able to be maliciously used to allow for getting around the rate limit during hacks. Note remember to restrict the address able to use the whitelist and removeWhitelist fn.
+
+```auto
+function whitelist(address addrs) public
+```
+
+```auto
+function removeWhitelist(address addrs) public
+```
+
+## Rationale
+
+By limiting token outflows at a per token level, malicious interactions can be limited in their damage as all net outflows are tracked and limited for all users based on a realtime allowance based on acceptable outflow relative to total amount held and within a given timeframe. The decision to track at the token level was for simplicity, gas efficiency and not needing to itself have vulnerabilities with oracles and accounting to track as a pool vs per asset. Whitelisting allows for contracts like yearn to be compatible if the destination is a known address not likely to be used in an attack. Dynanmic rate limits will help not stop but limit the possible damage, as all outflows need to use a transfer fn to steal assets, which this stops if reaches the rate limit.
+
+## Backwards Compatibility
+
+This will be non backwards compatible with contracts that are NOT whitelisted which assume they can just withdraw large positions, if those positions are large relative to the target contracts net position by all users. Should this be the case the contract can be fully compatible by simply being whitelisted, skipping all rate limit checks. There should be no other problems with compatibility as uses the standard ERC20 interface for tokens and usual ether transfer to replace.
+
+## Reference Implementation
+
+```auto
+// SPDX-License-Identifier: CC0-1.0
+pragma solidity ^0.8;
+
+import"IERC20.sol";
+
+contract rateLimit {
+    mapping(address => TokenInfo) public infoL;
+    struct TokenInfo {
+        uint32 timestamp; //tracks most recent send
+        uint224 ratedFlow; //tracks amount sent for the last timeWindow time
+    }
+
+    uint256 public timeWindow = 3600; //how long in seconds to limit within, recommend 1h = 3600
+    uint16 public rateLimit = 1000; //the basis points (00.0x%) to allow as the max sent within the last timeWindow time
+
+    mapping(address => uint8) public whitelisted; //stores whitelisted addresses to not be rate limited, useful for yearn style or deposit contracts
+    address public authAddress; //allows a set address that can whitelist addresses
+
+    //updates the time as well as the relative amount in basis points to track and rate limit outflows in which to track
+    //_rateLimit = 00.x%, _timeWindow = time in seconds
+    function updateLimits(uint16 _rateLimit, uint256 _timeWindow) internal {
+        rateLimit = _rateLimit;
+        timeWindow = _timeWindow;
+    }
+
+    //change the auth address that can whitelist addresses
+    function changeAuthAddress(address newAddrs) public {
+        require(msg.sender == authAddress);
+        authAddress = newAddrs;
+    }
+
+    //whitelist addresses as the msg.sender to not be rate limited
+    function whitelist(address addrs) public {
+        require(msg.sender == authAddress);
+        whitelisted[addrs] = 1;
+    }
+    //removes whitelist addresses as the msg.sender to not be rate limited
+    function removeWhitelist(address addrs) public {
+        require(msg.sender == authAddress);
+        whitelisted[addrs] = 0;
+    }
+
+    //gets the token amount left to be within the allowable limit
+    function getLimitLeft(address token)
+    public
+    view
+    returns (uint256 rateLeft)
+    {
+        TokenInfo storage info = infoL[token];
+        uint256 ratedFlow;
+        //if outside the time dwindow
+        if (timeWindow <= block.timestamp - info.timestamp) {
+            return (0);
+        }
+        //if the last transaction was within the time window, decreases the tracked outflow rate relative to the time elapsed, so that the limit is able to update in realtime rather than in blocks, making flows smooth, and increasing the rate available as time increases without a transaction
+        else {
+            unchecked {
+                ratedFlow = info.ratedFlow;
+                uint256 limitUnlocked;
+
+       if(block.timestamp != info.timestamp)
+               {
+                if (token==address(0)) {
+                    limitUnlocked = uint224(
+                        (address(this).balance * rateLimit) /
+                        (timeWindow / (block.timestamp - info.timestamp)) /
+                        10000
+                    );
+                }
+                else {
+                    limitUnlocked = uint224(
+                        IERC20(token).balanceOf(address(this)) * rateLimit /
+                        (timeWindow / (block.timestamp - info.timestamp)) /
+                        10000
+                    );
+                }
+                }
+                if (ratedFlow <= limitUnlocked) {
+                    return 0;
+                } else {
+                    return ratedFlow - limitUnlocked;
+                }
+            }
+        }
+    }
+
+    //used to replace ERC20 erc20token.transfer() and ETH address.transfer() fns in all public accessible fns which change the balances for the contract as outflow transactions.
+    //to used for the recipient address, amount for value amount in raw value, token as the tokens contract address to check, for ETH use address(0x0)
+    function transferL(
+        address to,
+        uint256 amount,
+        address token
+    ) public returns (bool success) {
+        TokenInfo storage info = infoL[token];
+
+        if (whitelisted[msg.sender] == 1) {
+            if (address(token) == address(0)) {
+                payable(to).transfer(amount);
+                return(true);
+            } else {
+                return(IERC20(token).transfer(to, amount));
+            }
+        }
+        //used if the asset is ETH and not an ERC20 token
+        else {
+            if (address(token) == address(0)) {
+                unchecked {
+                    //if the last transaction was within the time window, decreases the tracked outflow rate relative to the time elapsed, so that the limit is able to update in realtime rather than in blocks, making flows smooth, and increasing the rate available as time increases without a transaction
+                    uint256 limitUnlocked;
+
+if(block.timestamp != info.timestamp)
+{
+       limitUnlocked = uint224(
+                        (address(this).balance * rateLimit) /
+                        (timeWindow / (block.timestamp - info.timestamp)) /
+                        10000
+                    );
+}
+                    if (info.ratedFlow <= limitUnlocked || timeWindow <= block.timestamp - info.timestamp) {
+                        info.ratedFlow = 0;
+                    } else {
+                        info.ratedFlow -= uint224(limitUnlocked);
+                    }
+                }
+
+                //increases the tracked ratedFlow for the current time window by the amount sent out
+                info.ratedFlow += uint224(amount);
+                unchecked {
+                    //revert if the outflow exceeds rate limit
+                    require(
+                        info.ratedFlow <= (rateLimit * address(this).balance) / 10000
+                    );
+                    //sets the current time as the last transfer for the token
+                    info.timestamp = uint32(block.timestamp);
+                    //transfers out
+                    payable(to).transfer(amount);
+                    return(true);
+                }
+                //if the token is a ERC20 token
+            } else {
+                //used to get around solidity 0.8 reverts
+                unchecked {
+                if (block.timestamp != info.timestamp)
+                    {
+                    limitUnlocked = uint224(
+                        (IERC20(token).balanceOf(address(this)) * rateLimit) /
+                        (timeWindow / (block.timestamp - info.timestamp)) /
+                        10000
+                    );
+                    }
+                    if (info.ratedFlow <= limitUnlocked || timeWindow <= block.timestamp - info.timestamp) {
+                        info.ratedFlow = 0;
+                    } else {
+                        info.ratedFlow -= uint224(limitUnlocked);
+                    }
+                }
+                //increases the tracked ratedFlow for the current time window by the amount sent out
+                info.ratedFlow += uint224(amount);
+                unchecked {
+                    //revert if the outflow exceeds rate limit
+                    require(
+                        info.ratedFlow <=
+                        (rateLimit *
+                        IERC20(token).balanceOf(address(this))) /
+                        10000
+                    );
+                    //sets the current time as the last transfer for the token
+                    info.timestamp = uint32(block.timestamp);
+                    //transfers out
+                    return(IERC20(token).transfer(to, amount));
+                }
+            }
+        }
+    }
+}
+```
+
+### Note
+
+The actual limit would be based on the previous 1h outflows and should that be 0 the limit approaches 2*rateLimit for that 1h slot, though to be noted does not apply for following slots so rather than 2x, net outflow limit for any time t can be seen as
+
+rateLimit available at time 0 + timeWindow * rateLimit
+
+Not simply timeWindow * rateLimit, where 2 * rateLimit for cases where the start outflow (at time 0 for the window) would be 0 for the previous 1h (no activity last 1h), as the outflow at time 0 increases the excess possible decreases.
+
+So let’s say that you have a timeWindow at 100m and a rateLimit at 100 bips (lets say theres 1000 tokens and so 100 tokens per 100m)
+
+```auto
+Time (m)
+Amount out (up to limit)
+000 005 010 020 040 060 080 099 100 105 110 120...
+100 005 010 010 020 020 020 014 001 005 005 010...
+Delta 1h
+100+005+005+010+020+020+020+019+001 (200 last 1h possible at 0-100m passed)
+....005+005+010+020+020+020+019+001+005 (105 last 1h possible at 05-105m passed)
+
+Amount out last 1h window
+100 105 115 125 145 165 185 199 200 105 105 110 ...
+```
+
+So realistically ends up as the excess to the rateLimit possible being the free rate available at time 0 for the window.
+
+Making the timeWindow and rateLimit small for that window limits available rate at t0. So timeWindow at 5m, rateLimit 5 may be better than 100m and 100 bips.
+
+Though having a a large allowance and window allow spike capacity that smoothes and makes the av rate approach target rather than a set absolute target. could be useful. At worst with a 100 bip, 1h window, would take an attacker 9h to extract vs 10 as t0 would be 1h worth excess, but they can only do up to the rateLimit every 1h after as the previous 1h would have reached the rateLimit and not be 0.
+
+## Security Considerations
+
+The above discussion shows why we decided to implement the per token tracking and why and how this should be used to help limit losses from hacks. Contracts must consider any whitelists very carefully as these may be able to be used to drain assets by themselves having been hacked or through non intended use. Teams and projects must also consider their usual outflows based on analytics to try and not impact user experience, balancing both the limit in potential damage from the hack as well as the user experience from transaction reverts. The getLimitLeft can be used in the front end to let users know that there is high demand and to wait for outflows from the contracts. This also does not affect approvals and transferFrom to be used on the contracts balances, so contracts must be aware and manage approvals carefully as these are not checked, using transferL where possible.
+
+Note that `rateLimit` may be set to 1000 (100% in basis points), which effectively disables the rate limit. A flag had been considered, but it would result in higher gas fees and therefore was deemed unneccesary.
+
+## Copyright
+
+Copyright and related rights waived via [CC0](https://github.com/pr0toshi/EIPs/blob/fcb882ebc02c1657a377bc84d0055c2879c22478/LICENSE.md).
+
+## Replies
+
+**pr0toshi** (2022-05-05):
+
+# rateLimit benchmarks for gas consumption
+
+## gas price gwei // token type // rateLimit or nonL
+
+44k ETH rL
+
+32k ETH N
+
+53k token rL
+
+39.4k token N
+
+**Delta 12-13k**
+
+@100 gwei gas price premium per use
+
+0.000082 ETH
+
+$0.24
+
+---
+
+**philipjonsen** (2022-05-06):
+
+Thats actually I quite good Idea, reducing how much you can transfer one time or some kind of autentication to be able to transfer bigger sums for institutions, banks and so on. These recent hacks most come to an end, as we’ve seen this past year with the biggest hacks in crypto history.
+
+I have myself been targeted by some very skilled hackers, probably goverment or something like that,very sophistiacted and professional hacks. Luckly I have a background in computer security so was able to trace the hacks and what kind of malware that was running. But its still very scary and you can’t do much if you dont have a big business or a group of elite hackers behind you.
+
+---
+
+**pr0toshi** (2022-05-25):
+
+Any suggestions for gas optimisations would be great. Current overheads not too much but can probably be brought further down.
+

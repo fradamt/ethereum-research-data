@@ -1,0 +1,110 @@
+---
+source: magicians
+topic_id: 9277
+title: "5094: URI Format for Ethereum Network Switching"
+author: lucemans
+date: "2022-05-17"
+category: EIPs
+tags: [chain-id]
+url: https://ethereum-magicians.org/t/5094-uri-format-for-ethereum-network-switching/9277
+views: 2321
+likes: 2
+posts_count: 3
+---
+
+# 5094: URI Format for Ethereum Network Switching
+
+## Abstract
+
+This standard includes all needed information for adding a network to a wallet via URL, by including parameters such as `chainId`, `rpc_url`, `chain_name` and others, such that the network configuration is provided through the URL itself.
+
+## Motivation
+
+As observed with the use of EIP-681 and its implementation in current mobile wallets, transactions can be made, approved, viewed, and used. However, if the wallet is instructed to perform a transaction on a chain they have not yet been configured before, the operation tends to fail.
+
+Although understandable, as the `chain_id` provided makes up only one part of what is required to connect to a network. This EIP aims to introduce a new type of URL for usage with deep-linking, QR, and more, to allow users to seamlessly add new networks to their (for ex. mobile) wallet to then be able to more easily partake in `pay-`, `tx-`, or other Ethereum URL interactions.
+
+As an extension to EIP-831 and neighboring EIP-681 and EIP-2400, this document aims to standardize the addition of new networks and switching thereof through the means of URLs. User convenience in this case is primary.
+
+## Specification
+
+### Syntax
+
+Network Switching URLs contain “ethereum” in their schema (protocol) part and are constructed as follows:
+
+```
+network_add             = erc831_part [ "/" ] "@" chain_id "?" parameters
+erc831_part             = "ethereum:network-add"
+chain_id                = 1*DIGIT
+parameters              = parameter *( "&" parameter )
+parameter               = key "=" value
+key                     = required_keys / optional_keys
+required_keys           = "rpc_url" / "chain_name"
+optional_keys           = "name" / "symbol" / "decimals" / "explorer_url" / "icon_url"
+value                   = STRING / number
+number                  = 1*DIGIT
+```
+
+`STRING` is a URL-encoded Unicode string of arbitrary length, where delimiters and the
+
+percentage symbol (`%`) are mandatorily hex-encoded with a `%` prefix.
+
+If the *key* in the parameter is `decimals` the *value* MUST be a `number`.
+
+### Semantics
+
+`chain_id` is mandatory and denotes the decimal chain ID, such that we have the identifier of the network we would like to add.
+
+`rpc_url` is represented as an array of RPC URLs. A minimum of 1 `rpc_url` MUST be present, in the format of `rpc_url=https%3A%2F%2Fpolygon-rpc.com`, or when multiple present `rpc_url=https%3A%2F%2Fpolygon-rpc.com&rpc_url=https%3A%2F%2Frpc-mainnet.matic.network`.
+
+`chain_name` is required to specify the name of the network to be added.
+
+`name` and `symbol` if provided, SHOULD be a human-readable string representing the native token.
+
+`decimals` if provided, MUST be a non-negative integer representing the decimal precision of the native token.
+
+`explorer_url` if provided, MUST specify one or more URLs pointing to block explorer web sites for the chain.
+
+`icon_url` if provided, MUST specify one or more URLs pointing to reasonably sized images that can be used to visually identify the chain.
+
+An example of adding a network with RPC endpoints `https://rpc-polygon.com` and `https://rpc-mainnet.matic.network`, the name `Polygon Mainnet`, token `Matic`, symbol `MATIC`, decimals `18`, explorer at `https://polygonscan.com/`, and Chain ID `137` would look as follows:
+
+```URL
+ethereum:network-add@137/?chain_name=Polygon%20Mainnet&rpc_url=https%3A%2F%2Frpc-polygon.com&rpc_url=https%3A%2F%2Frpc-mainnet.matic.network&name=Matic&symbol=MATIC&decimals=18&explorer_url=https%3A%2F%2Fpolygonscan.com
+```
+
+## Rationale
+
+In furtherance of the Ethereum URL saga, network configuration is a needed addition to the possibility of Ethereum URLs. This would improve functionality for URLs, and offer non-mainnet users a way to connect without needing to configure their wallet by hand.
+
+The URL follows EIP-831 with the `PREFIX` being `network` and the `PAYLOAD` being a composite of `add` and EIP-681-like `chain_id` and parameters.
+
+The choice for `PREFIX` being `network` is to allow further expansion and allow variants following the pattern `network-x`.
+
+An example URL for adding the Optimism Network
+
+```URL
+ethereum:network-add@10/?chain_name=Optimistic%20Ethereum
+&rpc_url=https%3A%2F%2Fmainnet.optimism.io&name=Ethereum&symbol=ETH&decimals=18&explorer_url=https%3A%2F%2Foptimistic.etherscan.io
+```
+
+The specification allows for a multitude of `rpc_url` and `explorer_url` to be specified. This is done such to overlap with parsing of the `TYPE` mentioned in EIP-681.
+
+## Security Considerations
+
+URLs can be malformed to deceive users. Users SHOULD confirm source of URL before using any links. As well as checking source and transaction details before confirming any transactions. Applications SHOULD display network config, prior to network addition, such that users can confirm the validity of the network configuration being added.
+
+## Replies
+
+**matt** (2022-05-31):
+
+Just for context for other readers, we discussed this EIP a bit on [a call](https://youtu.be/wy1NaVFrhsk) recently and many people on the call felt this EIP was encouraging behavior that could potentially be exploited if someone was able to convince the user to add a malicious network to their wallet masquerading as another network.
+
+---
+
+**defigirlxo** (2022-06-01):
+
+I think this is a great step towards making the crypto experience one that is seemless and intuitive.
+
+With the goal being better UX, I think that especially newer users would appreciate a default list integrated within one link that includes the most popular networks.
+

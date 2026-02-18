@@ -1,0 +1,79 @@
+---
+source: magicians
+topic_id: 9923
+title: Calldata compression via RLP
+author: esaulpaugh
+date: "2022-07-13"
+category: Magicians > Primordial Soup
+tags: []
+url: https://ethereum-magicians.org/t/calldata-compression-via-rlp/9923
+views: 660
+likes: 0
+posts_count: 1
+---
+
+# Calldata compression via RLP
+
+I propose reducing the cost of handling calldata by reducing its size using Recursive Length Prefix encoding:
+
+Calldata:
+
+`b32f10b7`
+
+`0000000000000000000000000000000000000000000000000000000000000140` `0000000000000000000000000000000000000000000000000000000000000180` `0000000000000000000000000000000000000000000000000000000000000004` `0000000000000000000000000000000000000000000000000000000000000001` `0000000000000000000000000000000000000000000000000000000000000200` `0000000000000000000000000000000000000000000000000000000000000000` `0000000000000000000000000000000000000000000000000000000000000380` `0000000000000000000000000000000000000000000000000000000000000001` `0000000000000000000000000000000000000000000000000000000000000001` `00000000000000000000000000000000000000000000000000000000000003c0` `0000000000000000000000000000000000000000000000000000000000000001` `0000000000000000000000000000000000000000000000000000000000000aaa` `0000000000000000000000000000000000000000000000000000000000000003` `0000000000000000000000000000000000000000000000000000000000000007` `000000000000000000000000000000000000000000000000000000000000000f` `000000000000000000000000000000000000000000000000000000000000ffff` `0000000000000000000000000000000000000000000000000000000000000060` `00000000000000000000000000000000000000000000000000000000000000c0` `0000000000000000000000000000000000000000000000000000000000000120` `0000000000000000000000000000000000000000000000000000000000000001` `0102030405000000000000000000000000000000000000000000000000000000` `060708090a000000000000000000000000000000000000000000000000000000` `0000000000000000000000000000000000000000000000000000000000000001` `0b0c0d0e0f000000000000000000000000000000000000000000000000000000` `1011121314000000000000000000000000000000000000000000000000000000` `0000000000000000000000000000000000000000000000000000000000000001` `1516171819000000000000000000000000000000000000000000000000000000` `1a1b1c1d1e000000000000000000000000000000000000000000000000000000` `0000000000000000000000000000000000000000000000000000000000000004` `61686f7900000000000000000000000000000000000000000000000000000000` `0000000000000000000000000000000000000000000000000000000000000002` `ff0bff0aff09ff08ff07ff06ff05ff04ff03ff02ff01ff000000000000000000` `08000f07000e06000d00050c04000b03000a0200090100080000000000000000`
+
+Compressed:
+
+`b32f10b7` (function selector)
+
+plus RLP
+
+```auto
+c3820aaac5070f82ffffc20401eacdcc85010203040585060708090acdcc850b
+0c0d0e0f851011121314cdcc851516171819851a1b1c1d1e808461686f79c201
+01f298ff0bff0aff09ff08ff07ff06ff05ff04ff03ff02ff01ff009808000f07
+000e06000d00050c04000b03000a020009010008
+```
+
+This is for the example function `foo(address[],uint56[],(uint8,bool),bytes5[2][][3],bool,string,bool[2],function[])`
+
+Code snippet which uses my Java library:
+
+```auto
+    Function f = Function.parse("foo(address[],uint56[],(uint8,bool),bytes5[2][][3],bool,string,bool[2],function[])");
+
+    Tuple args = Tuple.of(
+            new Address[] { Address.wrap("0x0000000000000000000000000000000000000aaa") },
+            new long[] { 7L, 15L, 65_535L },
+            Tuple.of(4, true),
+            new byte[][][][]{
+                    new byte[][][] { new byte[][]{ new byte[] { 1, 2, 3, 4, 5}, new byte[] { 6, 7, 8, 9, 10 } } },
+                    new byte[][][] { new byte[][]{ new byte[] { 11, 12, 13, 14, 15}, new byte[] { 16, 17, 18, 19, 20 } } },
+                    new byte[][][] { new byte[][]{ new byte[] { 21, 22, 23, 24, 25}, new byte[] { 26, 27, 28, 29, 30 } } },
+            },
+            false,
+            "ahoy",
+            new boolean[] { true, true },
+            new byte[][] {
+                    Strings.decode("ff0bff0aff09ff08ff07ff06ff05ff04ff03ff02ff01ff00"),
+                    Strings.decode("08000f07000e06000d00050c04000b03000a020009010008")
+            }
+    );
+
+    ByteBuffer bb = f.encodeCall(args);
+
+    System.out.println(Function.formatCall(bb.array()));
+
+    System.out.println(FastHex.encodeToString(bb.array()));
+
+    String rlpStr = SuperSerial.serialize(f.getInputs(), args, true);
+    System.out.println(rlpStr);
+
+    System.out.println(Notation.forEncoding(Strings.decode(rlpStr)));
+```
+
+Tuples and arrays are represented by RLP lists and everything else is an RLP string. It can handle negative numbers because unlike plain RLP it can use the ABI schema with the bit length and signedness of each element. One downside is that negative numbers have to be represented full-width e.g. `ffffff` for an int24 with value -1. Applying a conventional compression algorithm to the RLP could help with this, but the gains would probably be small in the average case.
+
+One advantage of using RLP over using a conventional dictionary-based compression algorithm over a batch of calldata is that it’s fair with respect to whether a call is situated near the beginning or end of the batch when gas is charged per byte *after compression*. It may also be easier to calculate the gas fee.
+
+Reproduced from my reddit thread https://www.reddit.com/r/ethdev/comments/vxqm92/calldata_compression_via_rlp/

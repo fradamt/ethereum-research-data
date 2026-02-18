@@ -74,9 +74,11 @@ name = "magicians"
 path = "corpus/magicians"
 include = ["**/*.md"]
 
+# EIPs — point at your local EIPs repo checkout (not copied into corpus/).
+# Adjust path to match your layout. Skipped silently if the repo doesn't exist.
 [[corpus_sources]]
 name = "eips"
-path = "corpus/eips"
+path = "../EIPs/EIPS"
 include = ["eip-*.md"]
 
 # To index your own markdown files, add a corpus_sources entry:

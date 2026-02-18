@@ -1,0 +1,350 @@
+---
+source: magicians
+topic_id: 9922
+title: "EIP-5050: NFT Interaction Standard"
+author: alxi
+date: "2022-07-12"
+category: EIPs
+tags: [nft]
+url: https://ethereum-magicians.org/t/eip-5050-nft-interaction-standard/9922
+views: 2976
+likes: 0
+posts_count: 3
+---
+
+# EIP-5050: NFT Interaction Standard
+
+---
+
+## eip: 5050
+title: NFT Interaction Standard
+description: Action messaging and discovery protocol for interactions on and between NFTs
+author: Alexi (@0xalxi)
+discussions-to:
+status: Draft
+type: Standards Track
+category: ERC
+created: 2021-4-18
+requires: 173, 721, 1155, 1820, 4906
+
+## Abstract
+
+This standard defines a broadly applicable action messaging protocol for the transmission of arbitrary, user-initiated actions between tokens. Modular statefulness is achieved with optional state broker contracts that can provide arbitration and settlement of the action process.
+
+## Motivation
+
+Tokenized item standards such as ERC-721 and ERC-1155 serve as the objects of the Ethereum computing environment. A growing number of projects are seeking to build interactivity and *“digital phsyics”* into NFTs, especially in the contexts of gaming and decentralized identity. A standard action messaging protocol will allow this physics layer to be developed in the same open, Ethereum-native way as the objects they are built on.
+
+The messaging protocol outlined defines how an action is initiated and transmitted between tokens and (optional) shared state environments. It is paired with a common interface for defining functionality that allows off-chain services to aggregate and query supported contracts for functionality and interoperability; creating a discoverable, human-readable network of interactive token contracts. Not only can contracts that implement this standard be automatically discovered by such services, their *policies for interaction* can be as well. This allows clients to easily discover compatible senders and receivers, and allowed actions.
+
+Aggregators can also parse action event logs to derive analytics on new action types, trending/popular/new interactive contracts, which token and state contract pairs users are likely to interact with, and other discovery tools to facilitate interaction.
+
+### Benefits
+
+1. Make interactive token contracts discoverable and usable by applications
+2. Create a decentralized “digital physics” layer for gaming and other applications
+3. Provide developers with a simple solution with viable validity guarantees to make dynamic NFTs and other tokens
+4. Allow for generalized action bridges to transmit actions between chains (enabling actions on L1 assets to be saved to L2s, L1 assets to interact with L2 assets, and L2 actions to be “rolled-up”/finalized on L1).
+
+## Specification
+
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in RFC 2119.
+
+```solidity
+pragma solidity ^0.8.0;
+
+/// @title ERC-5050 Token Interaction Standard
+interface IERC5050Sender {
+    /// @notice Send an action to the target address
+    /// @dev The action's `fromContract` is automatically set to `address(this)`,
+    /// and the `from` parameter is set to `msg.sender`.
+    /// @param action The action to send
+    function sendAction(Action memory action) external payable;
+
+    /// @notice Check if an action is valid based on its hash and nonce
+    /// @dev When an action passes through all three possible contracts
+    /// (`fromContract`, `to`, and `state`) the `state` contract validates the
+    /// action with the initating `fromContract` using a nonced action hash.
+    /// This hash is calculated and saved to storage on the `fromContract` before
+    /// action handling is initiated. The `state` contract calculates the hash
+    /// and verifies it and nonce with the `fromContract`.
+    /// @param _hash The hash to validate
+    /// @param _nonce The nonce to validate
+    function isValid(bytes32 _hash, uint256 _nonce) external returns (bool);
+
+    /// @notice Retrieve list of actions that can be sent.
+    /// @dev Intended for use by off-chain applications to query compatible contracts,
+    /// and to advertise functionality in human-readable form.
+    function sendableActions() external view returns (string[] memory);
+
+    /// @notice Change or reaffirm the approved address for an action
+    /// @dev The zero address indicates there is no approved address.
+    ///  Throws unless `msg.sender` is the `_account`, or an authorized
+    ///  operator of the `_account`.
+    /// @param _account The account of the account-action pair to approve
+    /// @param _action The action of the account-action pair to approve
+    /// @param _approved The new approved account-action controller
+    function approveForAction(
+        address _account,
+        bytes4 _action,
+        address _approved
+    ) external returns (bool);
+
+    /// @notice Enable or disable approval for a third party ("operator") to conduct
+    ///  all actions on behalf of `msg.sender`
+    /// @dev Emits the ApprovalForAll event. The contract MUST allow
+    ///  an unbounded number of operators per owner.
+    /// @param _operator Address to add to the set of authorized operators
+    /// @param _approved True if the operator is approved, false to revoke approval
+    function setApprovalForAllActions(address _operator, bool _approved)
+        external;
+
+    /// @notice Get the approved address for an account-action pair
+    /// @dev Throws if `_tokenId` is not a valid NFT.
+    /// @param _account The account of the account-action to find the approved address for
+    /// @param _action The action of the account-action to find the approved address for
+    /// @return The approved address for this account-action, or the zero address if
+    ///  there is none
+    function getApprovedForAction(address _account, bytes4 _action)
+        external
+        view
+        returns (address);
+
+    /// @notice Query if an address is an authorized operator for another address
+    /// @param _account The address on whose behalf actions are performed
+    /// @param _operator The address that acts on behalf of the account
+    /// @return True if `_operator` is an approved operator for `_account`, false otherwise
+    function isApprovedForAllActions(address _account, address _operator)
+        external
+        view
+        returns (bool);
+
+    /// @dev This emits when an action is sent (`sendAction()`)
+    event SendAction(
+        bytes4 indexed name,
+        address _from,
+        address indexed _fromContract,
+        uint256 _tokenId,
+        address indexed _to,
+        uint256 _toTokenId,
+        address _state,
+        bytes _data
+    );
+
+    /// @dev This emits when the approved address for an account-action pair
+    ///  is changed or reaffirmed. The zero address indicates there is no
+    ///  approved address.
+    event ApprovalForAction(
+        address indexed _account,
+        bytes4 indexed _action,
+        address indexed _approved
+    );
+
+    /// @dev This emits when an operator is enabled or disabled for an account.
+    ///  The operator can conduct all actions on behalf of the account.
+    event ApprovalForAllActions(
+        address indexed _account,
+        address indexed _operator,
+        bool _approved
+    );
+}
+
+interface IERC5050Receiver {
+    /// @notice Handle an action
+    /// @dev Both the `to` contract and `state` contract are called via
+    /// `onActionReceived()`.
+    /// @param action The action to handle
+    function onActionReceived(Action calldata action, uint256 _nonce)
+        external
+        payable;
+
+    /// @notice Retrieve list of actions that can be received.
+    /// @dev Intended for use by off-chain applications to query compatible contracts,
+    /// and to advertise functionality in human-readable form.
+    function receivableActions() external view returns (string[] memory);
+
+    /// @dev This emits when a valid action is received.
+    event ActionReceived(
+        bytes4 indexed name,
+        address _from,
+        address indexed _fromContract,
+        uint256 _tokenId,
+        address indexed _to,
+        uint256 _toTokenId,
+        address _state,
+        bytes _data
+    );
+}
+
+/// @param _address The address of the interactive object
+/// @param tokenId The token that is interacting (optional)
+struct Object {
+    address _address;
+    uint256 _tokenId;
+}
+
+/// @param selector The bytes4(keccack256()) encoding of the action string
+/// @param user The address of the sender
+/// @param from The initiating object
+/// @param to The receiving object
+/// @param state The state contract
+/// @param data Additional data with no specified format
+struct Action {
+    bytes4 selector;
+    address user;
+    Object from;
+    Object to;
+    address state;
+    bytes data;
+}
+```
+
+### Action Naming
+
+Actions SHOULD use dot-separation for namespacing (e.g. `"spells.cast"` specifies the `"cast"` action with namespace `"spells"`), and arrow-separation for sequence specification (e.g. `"settle>build"` indicating `"settle"` must be received before `"build"`).
+
+### How State Contracts Work
+
+Actions do not require that a state contract be used. Actions can be transmitted from one token contract (`Object`) to another, or from a user to a single token contract. In these cases, the sending and receiving contracts each control their own state.
+
+State contracts allow arbitrary senders and receivers to share a user-specified state environment. Each `Object` MAY define its own action handling, which MAY include reading from the state contract during, but the action MUST be finalized by the state contract. This means the state contract serves as ground truth.
+
+The intended workflow is for state contracts to define stateful game environments, typically with a custom `IState` interface for use by other contracts. `Objects` register with state contracts to initialize their state. Then, users commit actions using a specific state contract to make things happen in the game.
+
+The modularity of state contracts allows multiple copies of the same or similar “game environment” to be created and swapped in or out by the client. There are many ways this modularity can be used:
+
+- Aggregator services can analyze action events to determine likely state contracts for a given sender/receiver
+- Sender/receiver contracts can require a specific state contract
+- Sender/receiver contracts can allow any state contract, but set a default. This is important for NFTs that change their render based on state. This default can also be configurable by the token holder.
+- State contracts can be bridges to state contracts on another chain, allowing for L1-verification, L2-storage usage pattern (validate action with layer-1 assets, save on l2 where storage is cheaper).
+
+#### Example
+
+ERC-5050 State Contract `FightGame` defines a fighting game environment. Token holders call `FightGame.register(contract, tokenId)` to randomly initialize their stats (strength/hp/etc.). An account which holds a registered token A of contract `Fighters`, calls `Fighters.sendAction(AttackAction)`, specifying token A from `Fighters` as the sender, token B from `Pacifists` contract as the receiver, and `FightGame` as the state contract.
+
+The action is passed to token B, which may handle the action in whatever way it wants before passing the action to the `FightGame` state contract. The state contract can verify the stored action hash with the `Fighters` contract to validate the action is authentic before updating the stats if the tokens, dealing damage to token B.
+
+Tokens A and B may update their metadata based on stats in the `FightGame` state contract, or based on their own stored data updated in response to sending/receiving actions.
+
+### Extensions
+
+#### Interactive
+
+Some contracts may have custom user interfaces that facilitate interaction.
+
+```solidity
+pragma solidity ^0.8.0;
+
+interface IERC5050Interactive {
+    function interfaceURI(bytes4 _action) external view returns (string);
+}
+```
+
+#### Action Proxies
+
+Action proxies can be used to support backwards compatibility with non-upgradeable contracts, and potentially for cross-chain action bridging.
+
+They can be implemented using a modified version of ERC-1820 that allows ERC-173 contract owners to call `setManager()`.
+
+#### Controllable
+
+Users of this standard may want to allow trusted contracts to control the action process to provide security guarantees, and support action bridging. Controllers step through the action chain, calling each contract individually in sequence.
+
+Contracts that support Controllers SHOULD ignore require/revert statements related to action verification, and MUST NOT pass the action to the next contract in the chain.
+
+```solidity
+pragma solidity ^0.8.0;
+
+interface IControllable {
+    event ControllerApproval(
+        address indexed _controller,
+        bytes4 indexed _action
+    );
+
+    event ControllerApprovalForAll(
+        address indexed _controller,
+        bool _approved
+    );
+
+    function approveController(address _controller, bytes4 _action)
+        external;
+
+    function setControllerApprovalForAll(address _controller, bool _approved)
+        external;
+
+    function isApprovedController(address _controller, bytes4 _action)
+        external
+        view
+        returns (bool);
+}
+```
+
+#### Metadata Update
+
+Interactive NFTs are likely to update their metadata in response to certain actions and developers MAY want to implement ERC-4906 event emitters.
+
+## Rationale
+
+The critical features of this interactive token standard are that it 1) creates a common way to define, advertise, and conduct object interaction, 2) enables optional, brokered statefulness with *useful* validity assurances at minimum gas overhead, 3) is easy for developers to implement, and 4) is easy for end-users to use.
+
+### Action Names & Selectors
+
+Actions are advertised using human-readable strings, and processed using function selectors (`bytes4(keccack256(action_key))`). Human-readable strings allow end-users to easily interpret functionality, while function selectors allow efficient comparison operations on arbitrarily long action keys. This scheme also allows for simple namespacing and sequence specification.
+
+Off-chain services can easily convert the strings to `bytes4` selector encoding when interacting with ERC-5050 contracts or parsing `SendAction` and `ActionReceived` event logs.
+
+### Validation
+
+Validation of the initiating contract via a hash of the action data was satisfactory to nearly everyone surveyed and was the most gas efficient verification solution explored. We recognize that this solution does not allow the receiving and state contracts to validate the initiating `user` account beyond using `tx.origin`, which is vulnerable to phishing attacks.
+
+We considered using a signed message to validate user-intiation, but this approach had two major drawbacks:
+
+1. UX users would be required to perform two steps to commit each action (sign the message, and send the transaction)
+2. Gas performing signature verification is computationally expensive
+
+Most importantly, the consensus among the developers surveyed is that strict user validation is not necessary because the concern is only that malicious initiating contracts will phish users to commit actions *with* the malicious contract’s assets. **This protocol treats the initiating contract’s token as the prime mover, not the user.** Anyone can tweet at Bill Gates. Any token can send an action to another token. Which actions are accepted, and how they are handled is left up to the contracts. High-value actions can be reputation-gated via state contracts, or access-gated with allow/disallow-lists. [Controllable](#controllable) contracts can also be used via trusted controllers as an alternative to action chaining.
+
+*Alternatives considered: action transmitted as a signed message, action saved to reusable storage slot on initiating contract*
+
+### State Contracts
+
+Moving state logic into dedicated, parameterized contracts makes state an action primitive and prevents state management from being obscured within the contracts. Specifically, it allows users to decide which “environment” to commit the action in, and allows the initiating and receiving contracts to share state data without requiring them to communicate.
+
+The specifics of state contract interfaces are outside the scope of this standard, and are intended to be purpose-built for unique interactive environments.
+
+### Gas and Complexity (regarding action chaining)
+
+Action handling within each contract can be arbitrarily complex, and there is no way to eliminate the possibility that certain contract interactions will run out of gas. However, developers SHOULD make every effort to minimize gas usage in their action handler methods, and avoid the use of for-loops.
+
+*Alternatives considered: multi-request action chains that push-pull from one contract to the next.*
+
+## Backwards Compatibility
+
+Non-upgradeable, already deployed token contracts will not be compatible with this standard unless a proxy registry extension is used.
+
+## Reference Implementation
+
+A reference implementation is included in `../assets/eip-5050` with a simple stateless example `Spells.sol`
+
+## Security Considerations
+
+The core security consideration of this protocol is action validation. Actions are passed from one contract to another, meaning it is not possible for the receiving contract to natively verify that the caller of the initiating contract matches the `action.from` address. One of the most important contributions of this protocol is that it provides an alternative to using signed messages, which require users to perform two operations for every action committed.
+
+As discussed in [Validation](#validation), this is viable because the initiating contract / token is treated as the prime mover, not the user.
+
+## Copyright
+
+Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+## Replies
+
+**SamWilsn** (2022-07-22):
+
+Have you considered requiring [EIP-165](https://eips.ethereum.org/EIPS/eip-165)?
+
+---
+
+**alxi** (2022-07-25):
+
+Good point Sam!  I will add that with the title change
+

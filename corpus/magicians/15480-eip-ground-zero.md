@@ -1,0 +1,83 @@
+---
+source: magicians
+topic_id: 15480
+title: EIP Ground Zero
+author: ProphetZX
+date: "2023-08-18"
+category: EIPs > EIPs core
+tags: []
+url: https://ethereum-magicians.org/t/eip-ground-zero/15480
+views: 769
+likes: 0
+posts_count: 1
+---
+
+# EIP Ground Zero
+
+Hi folks,
+
+This topic is a suggestion for a new EIP which includes important protocol and governance changes, as desired for by the original ethereum community for quite a while now. Hence, I hope that the topic of this EIP will be broadly noticed and discussed among active contributors in the ethereum ecoystem.
+
+Looking forward to hearing your ideas and thoughts about this EIP.
+
+Kind regards
+
+ProphetXZ
+
+---
+
+## eip: 7488
+title: Ground Zero
+description: Transitions Ethereum from Proof-of-Stake to Proof-of-Authority, as required by the community
+author: ProphetXZ (@ProphetXZ)
+discussions-to:
+status: Draft
+type: Standards Track
+category: Core
+created: 2023-06-30
+
+## Abstract
+
+This EIP transitions Ethereum from an unpermissioned to a permissioned blockchain. Switching from unpermissioned to permissioned will lower gas prices, transaction costs, improve privacy, and ultimately, restrict blockchain access to the people and community that are truly affected by it on a long-term basis, thus, eventually making the entire Ethereum ecosystem more **sustainable**. The main idea of the EIP is transitioning from a proof-of-stake (unpermissioned) to a proof-of-authority (permissioned) consensus mechanism for Ethereum mainnet. To mitigate the existing problem of short-term investment incentives, short-term decision making, and increasingly high gas prices, Ethereum would benefit from switching to a permissioned validator set on mainnet (after successfully deploying a testnet version).
+
+Additionally, the EIP also suggests discontinuing the IPFS and Swarm storages, since they have proven to be privacy-invasive and self-serving in the past. Restricting Ethereum data access and data storage to solely the original community will scale down ethereum ressources, but also prevent data misuse, so that the community may be served in a more **sustainable way** in the future. This would greatly lower the number of requests and decrease the load for operating nodes.
+
+## Motivation
+
+Since its humble beginnings, the Ethereum project has been open to the public and seen many contributions. The past years, however, have made it clear that such an open ecosystem design leads to a wide array of problems such as ongoing consensus problems, increasingly high transaction costs, cases of fraud, false ownership claims of assets such as the DAO hack and resulting fork (see EIP-779), illegal contracts and privacy intrusion, data theft, artifical and malicious content, and many more such things.
+
+Halting the IPFS and Swarm storage process, which enabled and multiplied above problems, as well as historically drained the ethereum ecosystem and infrastructure of important ressources and instead developing use cases for the original community would be a remedy for almost all of these problems.
+
+## Specification
+
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “NOT RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in RFC 2119 and RFC 8174.
+
+Mainnet (ID: 1) MUST be switched to permissioned, after a successfull testnet version has been deployed. The permissioned ethereum blockchain applies **proof-of-authority** as a consensus mechanism (see EIP-225), instead of proof-of-stake. To some degree, earlier versions of Goerli and Sepolia may provide blue prints for the intended setting, however, the validators would be chosen among the original community and based on daily exposure and long-term commitment to the Ethereum ecosystem. Each validator needs to be authenticated via a unique and fixed identity and retains one vote in every decision concerning the Ethereum ecosystem. One governance period is suggested to be seven years (however, the specific duration is up for discussion), thus ensuring a long-term commitment and clear responsibility for all important decisions made.
+
+Since for some existing DApps, token holdings will be affected by such a protocol change, it is REQUIRED to decide what happens to affected tokens ERC-721 and coins ERC-20. A feasible solution would be to gather all tokens in a central list and decide step-by-step (e.g., by vote of the new validators) which tokens will still be valid, are to be transfered and/or sold to benefit the community, and which ones should be burned.
+
+With regard to IPFS and Swarm, before halting these protocols, all data SHOULD be returned to the original owners (e.g., via p2p). A further improvement would then be to remove obsolete APIs, so nodes no longer answer unnecessary public API requests.
+
+Alternatively, if this EIP “Ground Zero” should fail and no similar solution will be found, a temporary halt of the Ethereum blockchain may be considered instead.
+
+## Rationale
+
+From the community’s point of view, a **proof-of-authority (PoA)** consensus mechanism is deemed much more secure than the current proof-of-stake (PoS) mechanism and puts the original community and the people most affected by Ethereum on a daily basis in charge of all important decision making. With PoS, strong incentives for speculation and gambling on Ether’s market price and Ethereum’s future path exist. Further, wealthy investors are at an advantage merely due to their purchasing power, thus under PoS giving them the possibly to leverage their wealth to shape and steer the future of Ethereum’s ecosystem. At the same time, however, these investors do not need to fully expose themselves to the ecosystem, apart from their investments, which depends mainly on the development of the short-term market price. We propose to instead choose authenticated validators among the original community and ensuring through a sufficiently long governance period that the best interests of the Ethereum ecosystem and its long-term health are respected. Through a one-vote-per-validator mechansim, long-term responsibility for every decision taken by the governing validators, and full exposure of the validators to the Ethereum ecosystem during the governance period, a more sustainable future path for Ethereum is ensured.
+
+Additionally, restricting blockchain and data access to only long-term Ethereum community members and halting IPFS and Swarm will prevent data misuse and stop the creation of tokens without legitimate ownership claims. Only original community members still exposed to the Ethereum ecosystem who also have a voting right, i.e., authenticated validators, have access to the primary part of the blockchain data and may create new tokens. One the one hand, this ensures privacy and prevents data misuse and theft. On the other hand, it also prevents fraud, since validators may be held responsible if they create false ownership claims through their unique IDs.
+
+## Backwards Compatibility
+
+Switching to a permissioned chain and discontinuing IPFS and Swarm will affect existing DApps in that some apps will only have restricted access or entirely loose access to the Ethereum blockchain, its APIs and data. The switch will also affect a number of smart contracts and tokens, in some cases rendering them obsolete. However, affected DApps, smart contracts, and tokens are commonly used by non-community members and short-term investors only, which are not bearing any or at least not enough skin-in-the game (exposure) to the Ethereum ecosystem on a long-term basis. Many of the tokens concerned are false ownership claims, so the switch to PoA and change in blockchain access and data storage will clean up the Ethereum ecosystem.
+
+## Security Considerations
+
+One the one hand, switching from proof-of-stake to proof-of-authority implies that the authorised validators have to be a 100 percent honest and trustworthy. Otherwise, the blockchain could easily be comrpomised and used for nefarious purposes. Hence, the validator(s) need(s) to be the person or people most affected by Ethereum as a whole and on a daily basis, i.e., the ones with most “skin-in-the-game”. As such, incentives are ideally aligned, so that the person or people most affected by the blockchain also are the ones deciding about the future of Ethereum. The punishment for bad decision making directly affects the decision makers themselves. Should one of the proof-of-authority validators wish to step down, the corresponding key(s) can simply be handed over to a successor. However, a long-term commitment of at least a seven-year time horizon is suggested, to incentivice long-term decision making.
+
+One the other hand, implementing “Ground Zero” is expected to greatly enhance security and mitigate the issues of privacy, theft, and exposure of the original Ethereum community to short-term investors and decision makers, as described above. In comparison to the current situation and proof-of-stake, it is not outside investors with a vested short-term and monetary interest in Ethereum, which buy stakes in Ethereum for investment purposes, but do not bear the actual costs of decisions over a longer time horizon within the Ethereum ecosystem, which decide about the future path of Ethereum, but the original community and people most affected by Ethereum on a daily basis and over a long-time horizon. Short-term proof-of-stake investors may simply benefit from access to Ethereum’s protocol and data and vanish if the path chosen by Ethereum does not satisfy them, possibly leaving Ethereum in a worse state than they found it in. Although these short-term investors may loose part of their investments in Ethereum, if their bad influence is correctly priced in by the market and overall holders of Ethereum, as is the case in the current proof-of-stake environment, a strong incentive is still present for them through speculation and gambling on the future of the Ethereum ecosystem, since they may simply walk away if they do not like the outcome of their decisions. The original community does not have that luxury and is affected by any decision within the Ethereum ecosystem, regardless of how bad that decision is or was and regardless of the future market price of Ethereum.
+
+Thus, implementation of EIP “Ground Zero” is not only supported, but required by the original community.
+
+## Copyright
+
+Ethereum Community, Aperon, ProphetXZ

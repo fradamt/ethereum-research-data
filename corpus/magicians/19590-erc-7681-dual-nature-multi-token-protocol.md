@@ -1,0 +1,186 @@
+---
+source: magicians
+topic_id: 19590
+title: "ERC-7681: Dual Nature Multi Token Protocol"
+author: sennett-lau
+date: "2024-04-08"
+category: ERCs
+tags: [erc-20, erc1155]
+url: https://ethereum-magicians.org/t/erc-7681-dual-nature-multi-token-protocol/19590
+views: 1091
+likes: 2
+posts_count: 3
+---
+
+# ERC-7681: Dual Nature Multi Token Protocol
+
+# Dual Nature Multi Token Protocol
+
+requires: ERC-20, ERC1155
+
+## Abstract
+
+This proposal ERC-7681 delineates the integration of the fungible ERC-20 token contract with the semi-fungible ERC-1155 multi-token standard, enabling cohesive operations between both standards within a single contract framework. It defines a mechanism for combining two token contracts and synchronizing operations between them.
+
+## Motivation
+
+Inspired by ERC-7631 Dual Nature Token Pair, which introduced a concept of interlinkable tokens between ERC-20 and ERC-721, a challenge arises due to the duplicated `Transfer(address, address, uint256)` event, making full compatibility challenging. However, combining ERC-20 and ERC-1155 offers similar benefits of non-fungible token (NFT) fractionalization natively. Here, acquiring ERC-20 tokens could automatically issue ERC-1155 tokens proportionally to the ERC-20 holdings, achieving full compliance with both standards.
+
+Furthermore, analogous to ERC-7631, this proposal allows users to opt out of ERC-1155 mints and transfers during the ERC-20 to ERC-1155 synchronization process.
+
+## Specification
+
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “NOT RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in RFC 2119 and RFC 8174.
+
+### Overview
+
+Every `ERC-7681` MUST implement both `ERC-20` and `ERC-1155` interface.
+
+### ERC-7681 Interface
+
+The ERC-20 contract MUST implement the following interface.
+
+```solidity
+interface IERC7681 /* is IERC20, IERC1155 */ {
+    /// The contract MUST contain the following events
+    /// ERC20 related events
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+
+    /// The contract MUST contain the following events
+    /// ERC1155 related events
+    event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _value);
+    event TransferBatch(address indexed _operator, address indexed _from, address indexed _to, uint256[] _ids, uint256[] _values);
+    event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
+    event URI(string _value, uint256 indexed _id);
+
+    /// The contract MAY contain the following functions
+    /// ERC20 related functions
+    function name() public view returns (string);
+    function symbol() public view returns (string);
+    function decimals() public view returns (uint8);
+
+    /// The contract MUST contain the following functions
+    /// ERC20 related functions
+    function totalSupply() public view returns (uint256);
+    function balanceOf(address _owner) public view returns (uint256);
+    function transfer(address _to, uint256 _value) public returns (bool);
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool);
+    function approve(address _spender, uint256 _value) public returns (bool);
+    function allowance(address _owner, address _spender) public view returns (uint256);
+
+    /// The contract MUST contain the following functions
+    /// ERC1155 related functions
+    function balanceOf(address _owner, uint256 _id) external view returns (uint256);
+    function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids) external view returns (uint256[] memory);
+    function setApprovalForAll(address _operator, bool _approved) external;
+    function isApprovedForAll(address _owner, address _operator) external view returns (bool);
+    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external;
+    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external;
+}
+```
+
+### ERC-7681 Skippable Interface
+
+The ERC-7681 contract MAY implement the following interface.
+
+```solidity
+interface IERC7681Skippable {
+    /// @dev Emitted when the skip ERC1155 token status of `owner` is changed by any mechanism.
+    ///
+    /// This initial skip ERC1155 token status for `owner` can be dynamically chosen to
+    /// be true or false, but any changes to it MUST emit this event.
+    event SkipTokenSet(address indexed owner, bool status);
+
+    /// @dev Returns true if ERC-1155 mints and transfers to `owner` SHOULD be
+    /// skipped during ERC-20 to ERC-1155 synchronization. Otherwise false.
+    ///
+    /// This method MAY revert
+    ///
+    /// If this method reverts:
+    /// - Interacting code SHOULD interpret `setSkipToken` functionality as
+    ///   unavailable (and hide any functionality to call `setSkipToken`).
+    /// - The skip ERC1155 token status for `owner` SHOULD be interpreted as undefined.
+    ///
+    /// Once a true or false value has been returned for a given `owner`,
+    /// this method MUST NOT revert for the given `owner`.
+    function getSkipToken(address owner) external view returns (bool);
+
+    /// @dev Sets the caller's skip ERC1155 token status.
+    ///
+    /// This method MAY revert
+    /// (e.g. insufficient permissions, method not supported).
+    ///
+    /// Emits a {SkipTokenSet} event.
+    function setSkipToken(bool status) external;
+}
+```
+
+## Rationale
+
+### Implementation Flexibility
+
+This proposal intentionally does not prescribe specific token synchronization logic to allow for diverse implementation strategies and novel use cases, such as one-to-one synchronization or fractionalization of ERC-1155 tokens based on ERC-20 holdings. Developers are afforded the flexibility to determine their synchronization approach, provided it remains fully compliant with the specifications of both token standards.
+
+### ERC-1155 Token Skipping
+
+For instances where the `owner` is a smart contract, setting the skip status to `true` by default can prevent unnecessary ERC-1155 minting for interactions with contracts like DEXs and lending protocols, thereby potentially reducing gas costs.
+
+### Backwards Compatibility
+
+This proposal is fully backward-compatible with the existing ERC-20 and ERC-1155 standards, ensuring that contracts reliant on these standards will continue to function seamlessly.
+
+## Security Considerations
+
+### Out-of-gas Denial of Service
+
+When user transfers ERC-20 tokens, it can trigger the automatic minting, transfer, or burning of various ERC-1155 tokens. This process can lead to gas expenses that grow linearly with the number of actions O(n) rather than the fixed cost O(1) usually seen with ERC-20 token transactions. Additionally, the mechanism for choosing ERC-1155 token IDs might increase gas expenses further. Therefore, any synchronization strategy needs to account for the potential rise in ERC-1155 associated gas costs to avoid running out of gas, which could result in denial of service situations.
+
+## Replies
+
+**sennett-lau** (2024-04-09):
+
+Implementations with the similar idea can be found here:
+
+A PR in DN404 (A ERC7631 implementation) repo - DN420
+
+https://github.com/Vectorized/dn404/pull/118
+
+"ERC"425 implementation:
+
+https://github.com/paradox425/ERC425
+
+---
+
+**qbig** (2024-07-07):
+
+It should be pointed out that both DN420 and ERC425 are only compatiable to 1155 **partially** because they don’t support balance other than 0 and 1. In other words, they are merely using 1155’s special case to implement erc721.
+
+eg. for erc425
+
+```auto
+  /**
+   * @dev See {IERC1155-balanceOf}.
+   *
+   * Requirements:
+   *
+   * - `account` cannot be the zero address.
+   */
+  function balanceOf(
+    address account,
+    uint256 id
+  ) public view virtual override returns (uint256) {
+    if (account == address(0)) {
+      revert BalanceQueryForZeroAddress();
+    }
+    if (_owned[account].get(id)) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+```
+
+DN420 is very similar too
+

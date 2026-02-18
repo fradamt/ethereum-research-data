@@ -1,0 +1,293 @@
+---
+source: magicians
+topic_id: 23927
+title: "EIP-7942: Available Attestation: A Reorg-Resilient Solution for Ethereum"
+author: mingfei
+date: "2025-04-29"
+category: EIPs > EIPs core
+tags: []
+url: https://ethereum-magicians.org/t/eip-7942-available-attestation-a-reorg-resilient-solution-for-ethereum/23927
+views: 449
+likes: 3
+posts_count: 7
+---
+
+# EIP-7942: Available Attestation: A Reorg-Resilient Solution for Ethereum
+
+# Table of Contents
+
+- Abstract
+- Motivation
+- Overview
+- Specification
+
+Definition
+- Protocol Changes
+- Pseudocode
+
+[Rationale](#rationale)
+[Backwards Compatibility](#backwards-compatibility)
+[Security Considerations](#security-considerations)
+
+## Abstract
+
+We propose a solution to address all known attacks in Ethereum PoS called Available Attestation. We show that all known attacks on Ethereum PoS are some form of reorganization attacks. Different from existing studies that mitigate the attacks in an ad-hoc way, we take a systematic approach and provide an elegant yet efficient solution to reorganization attacks. Our solution is provably secure such that no reorganization attacks can be launched in a synchronous network. In a partially synchronous network, our approach achieves the conventional safety and liveness properties of the consensus protocol, which are even stronger than those of the vanilla Ethereum PoS protocol. Our proposal has been accepted in USENIX Security 2025 ([paper](https://www.usenix.org/conference/usenixsecurity25/presentation/zhang-mingfei)).
+
+---
+
+## Motivation
+
+We find that all known effective attacks on Ethereum PoS belong to reorganization attacks, although they emphasize different types of adversarial strategies. According to how the canonical chain is manipulated by the adversary, we classify known attacks into two categories: attacks from *changing block weight* and attacks from *filtering block tree*. The attacks from changing block weight refer to the strategy where Byzantine validators modify the *weight* of their proposed blocks to make their fork eventually become the canonical chain. Meanwhile, the attacks from filtering block tree do not change the block weight. Instead, these attacks make honest validators prune the canonical chain. This is often achieved by changing the *state* of honest validators. We summarize these malicious reorganization attacks in the following table.
+
+| attack type | scheme | timing assumption | mitigation solution | limitation |
+| --- | --- | --- | --- | --- |
+| changing block weight | ex-ante reorg | synchrony | proposer boosting v1 | cause sandwich reorg |
+|  | balancing attack | synchrony | proposer boosting v1 | cause sandwich reorg |
+|  | sandwich reorg | synchrony | proposer boosting v2⋆ | cannot fully prevent |
+| filtering block tree | bouncing attack | partial synchrony† | safe-slots | cannot fully prevent |
+|  | unrealized justification reorg | synchrony | Capella upgrade | cause staircase attack |
+|  | justification withholding reorg | synchrony | Capella upgrade | cause staircase attack |
+|  | staircase attack | synchrony | Deneb upgrade | cannot fully prevent |
+
+⋆ Proposer boosting parameter decreases from 0.7 to 0.4.
+
+† The attack is conducted after the network is synchronous.
+
+In response to these vulnerabilities, mitigation approaches have been proposed from both academia and industry. They are often designed in an ad-hoc way, addressing one issue at a time. Without formal proof, these mitigation approaches may create new issues. For instance, to mitigate the ex-ante reorg attack and balancing attack, Ethereum implements the *proposer boosting* mechanism. By temporarily adjusting the weight of the block in the current slot, the forks created by the adversary will not become the canonical chain. However, this mitigation approach introduces new issues. A so-called *sandwich reorg attack* was later proposed, exploiting proposer boosting to create a reorg attack. The sandwich reorg attack is a variant of ex-ante reorg attacks where two Byzantine proposers collude to make the blocks by honest validators orphaned. Additionally, many known mitigation solutions lack formal analysis or introduce additional assumptions, e.g., by assuming that the ratio of stake controlled by the adversary is no more than 20%. Therefore, our approach aims to provide a provably secure and efficient solution that is resilient to reorg attacks in Ethereum PoS.
+
+---
+
+## Overview
+
+We provide a lightweight yet efficient solution for Ethereum PoS which is:
+
+1. reorg resilient in a synchronous network;
+2. safe and live in a partially synchronous network;
+3. easy to implement and deploy.
+
+We introduce AA, an approach inspired by conventional BFT protocols from *[weak quorum](https://dl.acm.org/doi/pdf/10.1145/3627703.3650073)* of attestations. Namely, consider a system with $N$ validators, among which at most $f$ are faulty. If $f+1$ validators vote for a block $b$ in slot $t$, at least one honest validator has validated $b$. The $f+1$ attestations become a *proof* of the availability of $b$. We use $AA_t$ to denote a block with $f+1$ attestations in slot $t$.
+
+Putting the concept of weak quorums in the context of Ethereum PoS, we define AA as a mechanism that checks *whether a block includes matching attestations from at least one-third of validators* (For simplicity, we assume that all validators attest in every slot in this section). In particular, if $b$ is a block for slot $t$, its child must include attestations for $b$ from at least one-third of validators in slot $t$. We use the notion of *stable block* to describe this scenario.
+
+---
+
+## Specification
+
+### Definition
+
+Formally, we give the following definitions for AA:
+
+- (AA) We use $AA_t$ to denote a block that receives more than one-third of attestations voting for it in slot $t$.
+- (Stable block) A block $b$ proposed in slot $t$ is a stable block if the parent of block $b$ is $AA_{t-1}$
+- (Unstable block) Block $b$ is an unstable block if $b$ is not a stable block.
+- (Stable chain) The chain $c$ is a stable chain if the leaf block of $c$ is a stable block.
+
+In practice, the validators are divided into 32 disjoint committees randomly. Since the committees are sampled pseudorandomly, the fraction of Byzantine validators in each committee follows a binomial distribution.
+
+- We use $\vartheta$ to denote the number of Byzantine validators in each committee and $p$ as the desirable failure probability (i.e., the probability that the number of Byzantine validators in a committee is greater than $\vartheta$).
+
+Given the desired value $p$, the value of $\vartheta$ can be calculated using $\vartheta = \lfloor\mu + \sigma \cdot \Phi^{-1}(1 - p)\rfloor,$ where $\mu = f/32$, $\sigma^2 = (f/32)(1 - f/n)$, and $\Phi^{-1}$ is the inverse of the cumulative distribution function of the normal distribution. We show some concrete examples of the ratio of Byzantine validators in a committee.
+
+| n     \ p | 10⁻⁶ | 10⁻⁷ | 10⁻⁸ | 10⁻⁹ |
+| --- | --- | --- | --- | --- |
+| 2¹⁴ | 0.4316 | 0.4414 | 0.4492 | 0.4570 |
+| 2¹⁶ | 0.3828 | 0.3872 | 0.3916 | 0.3955 |
+| 2¹⁸ | 0.3580 | 0.3603 | 0.3625 | 0.3645 |
+| 2²⁰ | 0.3457 | 0.3468 | 0.3479 | 0.3489 |
+
+Ethereum now has approximately $2^{20}$ validators. The maximum desirable probability $10^{-6}$ means that the protocol fails once every $10^{6}$ slots, i.e., 138 days. If the desirable failure probability is $10^{-9}$, malicious reorganization occurs once every 380 years. We can then draw the following conclusion:
+
+**For a large $n$, the ratio of Byzantine validators is closer to $f/n$. In this way, we can simply set $\vartheta$ as one-third of the committee size.**
+
+### Protocol Changes
+
+We make three main changes:
+
+1. Modify the selection rule of parent. As mentioned in the overview, we require that a block $b$ in slot $t$ must include $\vartheta+1$ attestations to prove that the parent of block $b$ is a valid output in slot $t-1$. Therefore, the parent of block $b$ is the $AA_{t-1}$. Such a block is a stable block. If no $AA_{t-1}$ exists, the parent of block $b$ is the output of the fork choice rule. Such a block is an unstable block.
+2. Replace HLMD-GHOST with Longest Stable Chain fork choice rule. We replace the HLMD GHOST with the longest chain as the fork choice rule. Our longest chain fork choice rule is very simple: it outputs the head of the chain with the most stable blocks. In case of a tie, the longest chain fork choice rule chooses the chain such that the leaf block has the largest slot number.
+3. Blocks carry a reference u to recent unstable blocks to preserve transaction continuity. We additionally include a field u in a block b. Each proposer sets its u field as the hash of an unstable block. If there is no such unstable block, set u as None. The transactions in the unstable blocks should not conflict with the transactions in the longest chain. The transactions in u can also be finalized once block b (that includes u) is finalized.
+4. Simplify the filtering rule and the justification process. We simplify the filtering rule as it only considers the chain that justifies the last justified checkpoint. Additionally, the justification process only updates when a chain crosses the epoch boundary.
+
+### Pseudocode
+
+The modifications are based on [validator.md](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/validator.md) and [fork-choice.md](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md).
+
+#### Modification 1
+
+In [validator.md](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/validator.md):
+
+To propose, the validator selects a `BeaconBlock`, `parent` using this process:
+
+1. Compute AA blocks at the start of slot. Let aa be the later AA block and aa_root be the root of aa.
+Set parent_root == aa_root.
+2. If no AA block exists, compute fork choice’s view of the head at the start of slot, after running
+on_tick and applying any queued attestations from slot - 1. Set parent_root = get_head(store).
+3. Let parent be the block with parent_root.
+
+#### Modification 2
+
+In [fork-choice.md](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md):
+
+Add a class called `chain` to manage the stable chains.
+
+```python
+@dataclass
+class Chain(object):
+    leaf: Root
+    length: uint64
+    justified_checkpoint: Checkpoint
+```
+
+Add chains in `store`.
+
+```python
+@dataclass
+class Store(object):
+    ...
+    chains: Set[Chain]
+```
+
+Modify `get_head`
+
+```python
+def get_head(store: Store) -> Root:
+    # Get filtered block tree that only includes viable branches
+    chains = get_filtered_block_tree(store)
+    # Execute the longest stable chain fork choice
+    return max(chains, key=length).leaf
+```
+
+#### Modification 3
+
+In [validator.md](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/validator.md):
+
+Modify `Preparing for a BeaconBlock`
+
+To construct a `BeaconBlockBody`, a `block` (`BeaconBlock`) is defined with the necessary context for a block proposal:
+
+###### unstable
+
+Set `block.unstable` as the hash of the latest unstable block if such block exists. If none exists, set `unstable = None`. The transactions in `unstable` must not conflict with the stable chain and will be finalized once `block` is finalized.
+
+#### Modification 4
+
+In [fork-choice.md](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md):
+
+Modify `get_filtered_block_tree`. Only consider the chain that justifies the latest justified checkpoint.
+
+```python
+def get_filtered_block_tree(store: Store) -> List(Chain) :
+    chains = []
+    for chain in store.chains:
+        if is_equal(store.justified_checkpoint.root, chain.justified_checkpoint.root):
+            chains.add(chain)
+    return chains
+```
+
+Remove the fields `unrealized_justified_checkpoint` and `unrealized_finalized_checkpoint`. Remove `compute_pulled_up_tip`, i.e., remove the justification and finalization process that occurs during an epoch. The `justified_checkpoint` field of a chain is only updated when crossing an epoch boundary.
+
+---
+
+## Rationale
+
+The reason why our approach is reorg resilient is that the AA mechanism *prevents* Byzantine validators from creating conflicting branches. As summarized in the table, there are two strategies for Byzantine validators: (1) Byzantine validators directly propose a block conflicting with the canonical chain and (2) Byzantine validators propose a block that extends the canonical chain and delay releasing the block. Neither of these strategies works anymore after AA is implemented. For the first type, only the leaf blocks in the block tree can be the output of the fork choice rule. If a Byzantine validator tries to create a block $b_1$ that extends a block $b_0$ that is not a leaf block, $b_0$ will receive no attestations from honest validators. Thus, block $b_1$ is an unstable block. For the second type, our approach ensures that if Byzantine validators withhold at least two stable blocks, one of them must have already been observed by *all* honest validators (see Lemma 2 in our paper for details).
+
+Now it becomes clear why we use the *longest chain* rule to replace the HLMD-GHOST rule. Informally, as the HLMD-GHOST rule determines the canonical chain based on the weight of the blocks, and the weight is determined by the number of attestations, the HLMD-GHOST rule cannot prevent adversaries from withholding their attestations.
+
+Our modified protocol can achieve the safety and liveness properties of the consensus protocol. Safety still holds since we do not modify Casper, the finality gadget protocol. Liveness is achieved after GST mainly because our protocol is reorg resilient in a synchronous network. As all honest validators consider the blocks proposed by honest validators to be part of the longest chain, their attestations will be considered valid by all honest validators, so eventually some block is finalized.
+
+---
+
+## Backwards Compatibility
+
+The proposal modifies the fork choice logic and attestation format, which may not be compatible with existing clients. A hard fork or protocol version flag will be required for deployment.
+
+---
+
+## Security Considerations
+
+- Resilience to reorg attacks: The protocol is provably resilient to all known forms of reorg attacks in synchronous networks.
+- No new attack surfaces: The protocol avoids introducing new message types or unnecessary overhead.
+- Safe and live: Maintains standard safety and liveness in partially synchronous networks.
+
+A full formal proof of correctness and evaluation over 16,384 validators is provided in the companion paper accepted to USENIX Security 2025.
+
+---
+
+## Replies
+
+**aryaethn** (2025-05-10):
+
+Great proposal.
+
+However, I want to know how many of such attacks you have mentioned have occurred in the past? Could you please elaborate on that?
+
+---
+
+**mingfei** (2025-05-11):
+
+Thanks.
+
+Most of these attacks have been identified theoretically rather than occurring on Ethereum mainnet. Ethereum has typically implemented mitigations after identifying vulnerabilities through theoretical analysis or simulation.
+
+---
+
+**aryaethn** (2025-05-11):
+
+Thanks for the answer. Another question is regarding the feasibility of the attacks. Are these attacks feasible in the real world? In other words, economically feasible?
+
+Because in the real world, when attacks are not economically feasible, we can consider them infeasible due to the complexity and low reward.
+
+Could you elaborate on that, too?
+
+---
+
+**mingfei** (2025-05-15):
+
+Most of these attacks are economically feasible, as the adversary will not be slashed.
+
+The adversary may not aim to attack the system for economic purposes, instead, they may just want to break down the system.
+
+But some of them are easy to conduct, like ex-ante reorg and sandwich attack. The stake requirements is much lower than one-third.
+
+---
+
+**kladkogex** (2025-05-15):
+
+![](https://ethereum-magicians.org/user_avatar/ethereum-magicians.org/mingfei/48/15094_2.png) mingfei:
+
+> We find that all known effective attacks on Ethereum PoS belong to reorganization attacks,
+
+This is simply not true
+
+
+      ![](https://ethresear.ch/uploads/default/optimized/1X/_129430568242d1b7f853bb13ebea28b3f6af4e7_2_32x32.png)
+
+      [Ethereum Research – 3 Dec 22](https://ethresear.ch/t/kamikaze-attacks-on-eth2/14351)
+
+
+
+    ![image](https://ethereum-magicians.org/uploads/default/optimized/1X/_129430568242d1b7f853bb13ebea28b3f6af4e7_2_500x500.png)
+
+
+
+###
+
+
+
+There is one type of an attack on ETH PoS, where attacker is willing to sacrifice 32 ETH slashed to potentially have a much larger gain.  If an attacker shorts a significant amount of ETH, then the potential gain from even temporarily disruption...
+
+---
+
+**Nobody** (2025-08-28):
+
+This proposal is basically just presenting different type of single-slot rollback pattern, and in the end, the actual impact isn’t meaningfully different from the original single-slot rollback which is a design not attack vector i thought.
+
+As for the supposed defenses against single-slot rollback which could been solved by SSF, And SSF seems to be Ethereum’s goal as well, so why give up the various benefits of SSF to implement a solution for a issue that isn’t even a problem? In fact, Vitalik has been discussing SSF and give solutions.
+
+Under these circumstances, claiming the scheme is “stronger than those of the vanilla Ethereum PoS protocol” is hardly convincing —especially when the paper makes sweeping statements without proper support, like “all known effective attacks on Ethereum PoS belong to reorganization attacks.”
+
+And I’m also curious about what the following sentence means. I’m eager to learn the details of your proposal for educational purposes, but some of the finer points are proving difficult to grasp.
+
+> (Unstable block) Block $b$ is an unstable block if $b$ is not a stable block.
+

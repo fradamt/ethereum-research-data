@@ -1,0 +1,211 @@
+---
+source: magicians
+topic_id: 13605
+title: "Draft EIP: ERC-721 Holding Time Tracking"
+author: saitama2009
+date: "2023-03-30"
+category: EIPs
+tags: [erc, nft, erc-721]
+url: https://ethereum-magicians.org/t/draft-eip-erc-721-holding-time-tracking/13605
+views: 1800
+likes: 1
+posts_count: 3
+---
+
+# Draft EIP: ERC-721 Holding Time Tracking
+
+## Abstract
+
+This standard is an extension of [ERC-721](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md). It adds an interface that tracks and describes the holding time of a Non-Fungible Token (NFT) by an account.
+
+## Motivation
+
+In some use cases, it is valuable to know the duration for which a NFT has been held by an account. This information can be useful for rewarding long-term holders, determining access to exclusive content, or even implementing specific business logic based on holding time. However, the current ERC-721 standard does not have a built-in mechanism to track NFT holding time.
+
+This proposal aims to address these limitations by extending the ERC-721 standard to include holding time tracking functionality.
+
+## Specification
+
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in RFC 2119.
+
+**Interface**
+
+The following interface extends the existing ERC-721 standard:
+
+```solidity
+// SPDX-License-Identifier: CC0-1.0
+pragma solidity ^0.8.0
+
+interface IERC6806 {
+    function getHoldingInfo(
+        uint256 tokenId
+    ) external view returns (address holder, uint256 holdingTime);
+}
+```
+
+**Functions**
+
+### getHoldingInfo
+
+```auto
+function getHoldingInfo(uint256 tokenId) external view returns (address holder, uint256 holdingTime);
+```
+
+This function returns the current holder of the specified NFT and the length of time (in seconds) the NFT has been held by the current account.
+
+- tokenId: The unique identifier of the NFT.
+- Returns: A tuple containing the current holder’s address and the holding time (in seconds).
+
+## Rationale
+
+The addition of the `getHoldingInfo` function to an extension of the ERC-721 standard enables developers to implement NFT-based applications that require holding time information. This extension maintains compatibility with existing ERC-721 implementations while offering additional functionality for new use cases.
+
+The `getHoldingInfo` function provides a straightforward method for retrieving the holding time and holder address of an NFT. By using seconds as the unit of time for holding duration, it ensures precision and compatibility with other time-based functions in smart contracts.
+
+## Backwards Compatibility
+
+This proposal is fully backwards compatible with the existing ERC-721 standard, as it extends the standard with new functions that do not affect the core functionality.
+
+## Reference Implementation
+
+```solidity
+// SPDX-License-Identifier: CC0-1.0
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "./IERC6806.sol";
+
+contract ERC6806 is ERC721, Ownable, IERC6806 {
+    mapping(uint256 => address) private _holder;
+    mapping(uint256 => uint256) private _holdStart;
+    mapping(address => bool) private _holdingTimeWhitelist;
+
+    constructor(
+        string memory name_,
+        string memory symbol_
+    ) ERC721(name_, symbol_) {}
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 firstotTokenId,
+        uint256
+    ) internal override {
+        if (_holdingTimeWhitelist[from] || _holdingTimeWhitelist[to]) {
+            return;
+        }
+
+        if (_holder[firstotTokenId] != to) {
+            _holder[firstotTokenId] = to;
+            _holdStart[firstotTokenId] = block.timestamp;
+        }
+    }
+
+    function getHoldingInfo(
+        uint256 tokenId
+    ) public view returns (address holder, uint256 holdingTime) {
+        return (_holder[tokenId], block.timestamp - _holdStart[tokenId]);
+    }
+
+    function setHoldingTimeWhitelistedAddress(
+        address account,
+        bool ignoreReset
+    ) public onlyOwner {
+        _holdingTimeWhitelist[account] = ignoreReset;
+        emit HoldingTimeWhitelistSet(account, ignoreReset);
+    }
+}
+```
+
+## Security Considerations
+
+This EIP introduces additional state management for tracking holding times, which may have security implications. Implementers should be cautious of potential vulnerabilities related to holding time manipulation, especially during transfers.
+
+When implementing this EIP, developers should be mindful of potential attack vectors, such as reentrancy and front-running attacks, as well as general security best practices for smart contracts. Adequate testing and code review should be performed to ensure the safety and correctness of the implementation.
+
+Furthermore, developers should consider the gas costs associated with maintaining and updating holding time information. Optimizations may be necessary to minimize the impact on contract execution costs.
+
+It is also important to note that the accuracy of holding time information depends on the accuracy of the underlying blockchain’s timestamp. While block timestamps are generally reliable, they can be manipulated by miners to some extent. As a result, holding time data should not be relied upon as a sole source of truth in situations where absolute precision is required.
+
+## Copyright
+
+Copyright and related rights waived via [CC0](https://github.com/ethereum/EIPs/blob/master/LICENSE.md).
+
+Link to the EIP:
+
+
+
+      [github.com/ethereum/EIPs](https://github.com/ethereum/EIPs/pull/6806)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####
+
+
+      `master` ← `saitama2009:draft_erc721_holding_time`
+
+
+
+
+          opened 04:21PM - 30 Mar 23 UTC
+
+
+
+          [![](https://ethereum-magicians.org/uploads/default/original/2X/7/7ad5c8981125264d9145cda3929a862d168f561f.png)
+            saitama2009](https://github.com/saitama2009)
+
+
+
+          [+132
+            -0](https://github.com/ethereum/EIPs/pull/6806/files)
+
+
+
+
+
+
+
+An extension of ERC-721 that adds an interface to track and describe the holding[…](https://github.com/ethereum/EIPs/pull/6806) time of a Non-Fungible Token (NFT) by an account.
+
+## Replies
+
+**ComboWizard** (2023-04-05):
+
+We have observed that many NFT communities have centralized reward activities based on the length of time users hold NFT, and this extension can decentralize such activities.
+
+---
+
+**derodero24** (2023-07-05):
+
+It is indeed a very useful standard!
+
+To implement IERC6806, I would suggest the following changes:
+
+- Add the event HoldingTimeWhitelistSet.
+- Fix the missing comma below.
+
+```plaintext
+// SPDX-License-Identifier: CC0-1.0
+pragma solidity ^0.8.0;
+
+interface IERC6806 {
+    event HoldingTimeWhitelistSet(address indexed account, bool ignoreReset);
+
+    function getHoldingInfo(
+        uint256 tokenId
+    ) external view returns (address holder, uint256 holdingTime);
+}
+```
+

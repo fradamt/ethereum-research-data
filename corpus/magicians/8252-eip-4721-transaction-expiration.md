@@ -1,0 +1,57 @@
+---
+source: magicians
+topic_id: 8252
+title: EIP-4721 - Transaction Expiration
+author: primata
+date: "2022-02-09"
+category: EIPs > EIPs core
+tags: [opcodes, gas]
+url: https://ethereum-magicians.org/t/eip-4721-transaction-expiration/8252
+views: 651
+likes: 0
+posts_count: 1
+---
+
+# EIP-4721 - Transaction Expiration
+
+---
+
+## eip: 4721
+title: Transaction Expiration
+description: Proposes a transaction expiration block for every transaction.
+author: Lucas Vinzon (@SnowPrimate)
+github:
+status: Draft
+type: Standards Track
+category: Core
+created: 2022-01-25
+
+## Abstract
+
+When in Ethereum mempool, every transaction should expire after a certain amount of blocks resulting in no cost to its users. 15.000 blocks would effectively have every transaction on the mempool for two days.
+
+## Motivation
+
+Gas cost, usability and serving its purpose for its users. Prevents waste of resources and benefits network usage.
+
+## Specification
+
+Once in the Mempool ALL transactions MUST expire after a certain amount of blocks. This applies to ALL transactions. It is OPTIONAL to lower the amount of blocks it will be live on the Mempool. It SHALL NOT result in gas cost to users.
+
+## Rationale
+
+Ethereum currently has a lot of pending transactions. Those transactions have little to no value to its users and the network since most of them will fail or never occur. Their existence in the Mempool inflates gas cost since they are referred to when estimating transaction costs for users. This significantly reduces usability and increases friction. It would also be forgiving to unexperienced users who set transactions that are not meant to fulfill, further wasting resources. This proposal highly values usability and preventing wasting resources, serving its purpose as a network.
+
+## Backwards Compatibility
+
+TBA
+
+## Security Considerations
+
+TBA
+
+It needs an expert’s opinion on implementation and viability. I would like to invite you all to share your input.
+
+## Copyright
+
+Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).

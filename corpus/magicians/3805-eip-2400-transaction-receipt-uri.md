@@ -1,0 +1,212 @@
+---
+source: magicians
+topic_id: 3805
+title: EIP-2400 - Transaction Receipt URI
+author: 3esmit
+date: "2019-11-26"
+category: EIPs
+tags: [eip-831]
+url: https://ethereum-magicians.org/t/eip-2400-transaction-receipt-uri/3805
+views: 3199
+likes: 5
+posts_count: 6
+---
+
+# EIP-2400 - Transaction Receipt URI
+
+[github.com/ethereum/EIPs](https://github.com/ethereum/EIPs/pull/2400)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####
+
+
+      `master` ← `status-im:tx-hash-uri`
+
+
+
+
+          opened 06:59AM - 26 Nov 19 UTC
+
+
+
+          [![](https://avatars.githubusercontent.com/u/224810?v=4)
+            3esmit](https://github.com/3esmit)
+
+
+
+          [+104
+            -0](https://github.com/ethereum/EIPs/pull/2400/files)
+
+
+
+
+
+
+
+## Simple Summary
+
+A standardized URI for transaction receipt with complete in[…](https://github.com/ethereum/EIPs/pull/2400)formation about transaction.
+
+A standard way of representing a submitted transaction.
+
+## Abstract
+
+A transaction hash is not very meaningful on its own, because it looks just like any other hash, and it might lack important information for reading a transaction.
+This standard includes all needed information for displaying a transaction and it's details, such as `chainId`, `method` signature called and `events` signatures emitted.
+
+### Use-cases
+
+Transaction Receipt URIs embedded in QR-codes, hyperlinks in web-pages, emails or chat messages provide for robust cross-application signaling between very loosely coupled applications. A standardized URI format allows for instant invocation of the user’s preferred transaction explorer application. Such as:
+
+- In web3 (dapps, mining pools, exchanges), links would automatically open user's preferred transaction explorer;
+- In wallets, for users sharing transaction receipts easier;
+- In chat applications, as a reply to an [ERC-681] transaction request;
+- In crypto vending machines, a QRCode can be displayed when transactions are submitted;
+- Anywhere transaction receipts are presented to users.
+
+## Motivation
+
+Interoperability for web3: wallets, browsers and messengers.
+
+## Specification
+
+### Syntax
+
+Transaction receipt URLs contain "ethereum" in their schema (protocol) part and are constructed as follows:
+
+    receipt                 = erc831_part transaction_hash [ "@" chain_id ] [ "?" parameters ]
+    erc831_part             = "ethereum:tx-"
+    transaction_hash        = "0x" 64*HEXDIG
+    chain_id                = 1*DIGIT
+    parameters              = parameter *( "&" parameter )
+    parameter               = key "=" value
+    key                     = "method" / "events"
+    value                   = function_signature / event_list
+    function_signature      = function_name "(" TYPE *( "," TYPE) ")"
+    function_name           = STRING
+    event_list              = event_signature *( ";" event_signature )
+    event_signature         = event_name "(" event_type *( "," event_type) ")"
+    event_name              = STRING
+    event_type              = ["!"] TYPE
+
+Where `TYPE` is a standard ABI type name, as defined in [Ethereum Contract ABI specification](https://solidity.readthedocs.io/en/develop/abi-spec.html). `STRING` is a URL-encoded unicode string of arbitrary length.
+
+The exclamation symbol (`!`), in `event_type`, is used to identify indexed event parameters.
+
+### Semantics
+
+`transaction_hash` is mandatory. The hash must be looked up in the corresponding `chain_id` transaction history, if not found it should be looked into the pending transaction queue and rechecked until is found. If not found and "transaction not found" error should be shown. When the transaction is pending, it should keep checking until the transaction is included in a block and becomes "unrevertable" (usually 12 blocks after transaction is included).
+
+`chain_id` is optional and contains the decimal chain ID, such that transactions on various test and private networks can be represented as well. If no `chain_id` is present, the $ETH/mainnet (`1`) is considered.
+
+If `method` is not present, this means that the transaction receipt URI does not specify details, or that it was a transaction with no calldata. When present it needs to be validated by comparing the first 4 bytes of transaction calldata with the first 4 bytes of the keccak256 hash of `method`, if invalid a "method validation error" should be shown instead of the transaction.
+
+If `events` is not present, this means that the transaction receipt URI does not specify details, or that the transaction did not raised any events. Pending and failed transactions don't validate events, however, when transaction is successful (or changes from pending to success) and events are present in URI, each event in the `event_list` should occur at least once in the transaction receipt event logs, otherwise and "event validation error" should be shown instead of the transaction, showing details of the missing events.
+
+#### Examples
+
+Simple ETH transfer:
+`ethereum:tx-0x1143b5e38fe3cf585fb026fb9b5ce35c85a691786397dc8a23a07a62796d8172@1`
+
+[Complex contract transaction](https://etherscan.io/tx/0x4465e7cce3c784f264301bfe26fc17609855305213ec74c716c7561154b76fec#eventlog):
+`ethereum:tx-0x4465e7cce3c784f264301bfe26fc17609855305213ec74c716c7561154b76fec@1?method="issueAndActivateBounty(address,uint256,string,uint256,address,bool,address,uint256)"&events="Transfer(!address,!address,uint256);BountyIssued(uint256);ContributionAdded(uint256,!address,uint256);BountyActivated(uint256,address)"`
+
+## Rationale
+
+The goal of this standard envolves only the transport of submitted transactions, and therefore transaction data should be loaded from blockchain or pending transaction queue, which also serves as a validation of the transaction existence.
+Transaction hash not found is normal in fresh transactions, but can also mean that effectively a transaction was never submitted or have been replaced (through "higher gasPrice" nonce override or through an uncle/fork).
+In order to decode transaction parameters and events, a part of the ABI is required. The transaction signer have to know the ABI to sign a transaction, and is also who is creating a transaction receipt, so the transaction receipt can optionally be shared with the information needed to decode the transaction call data and it's events.
+
+## Backwards Compatibility
+
+Future upgrades that are partially or fully incompatible with this proposal must use a prefix other than `tx-` that is separated by a dash (-) character from whatever follows it, as specified by [ERC-831].
+
+## References
+
+* [ERC-831]
+* [ERC-681]
+
+## Copyright
+
+Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+[ERC-831]: https://eips.ethereum.org/EIPS/eip-831
+[ERC-681]: https://eips.ethereum.org/EIPS/eip-681
+
+
+
+
+
+
+
+
+
+
+
+
+Latest version: [EIPs/EIPS/eip-2400.md at tx-hash-uri · status-im/EIPs · GitHub](https://github.com/status-im/EIPs/blob/tx-hash-uri/EIPS/eip-2400.md)
+
+## Replies
+
+**3esmit** (2019-11-26):
+
+Users need a common, self-describing and universal way of sharing a transaction receipt with others.
+
+As there was already a standard for transaction request, I followed the same idea around it.
+
+Possible improvements:
+
+- remove the 0x part of transaction hash, as it’s redeundant
+- define a better way of informing the events risen
+- better way of informing method called
+
+I don’t think is important to include things that a client can figure out by itself, as transaction status, for example, as the information would have to be validated anyway.
+
+---
+
+**ligi** (2019-11-28):
+
+thanks for the initiative - left comments on the EIP
+
+---
+
+**3esmit** (2019-12-03):
+
+I added in the specification a recommendation (should) on how to deal with pending and failed transactions.
+
+I wonder if we should add recommendations for inner failed transactions, something that sometimes happens in some contracts as MultiSigWallet, where the confirmation sucessfully executes in the outermost transaction, but the inner transaction fails, leading users to errors in trying to confirm again. The same thing could maybe be used to trick users into thinking a transaction wasnt executed when part of it (as the most important) was executed.
+
+---
+
+**3esmit** (2019-12-04):
+
+Also, I mentioned that a transaction can become invalid, but I mentioned a case I am not really sure how realistic is.
+
+What happens when a transaction is included but ends up in a uncle block?
+
+I guess naturally it would get included again in a next block, but it gives a very small window to overrun the transaction, just like is done with pending transactions.
+
+So perhaps this already falls into the case of a waiting for 12 confirmations, and an overrun would cause it to become an invalid transaction just like for overran pending transactions.
+
+---
+
+**3esmit** (2022-07-14):
+
+This EIP now is being moved to Review. If you would like to join conversation:
+
+https://github.com/ethereum-cat-herders/EIPIP/issues/159
+
+https://github.com/ethereum/EIPs/pull/5217
+

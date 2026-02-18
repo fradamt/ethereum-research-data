@@ -1,0 +1,370 @@
+---
+source: magicians
+topic_id: 11416
+title: "ERC: Physically Transferrable Token"
+author: 736C
+date: "2022-10-21"
+category: ERCs
+tags: [erc, token]
+url: https://ethereum-magicians.org/t/erc-physically-transferrable-token/11416
+views: 803
+likes: 1
+posts_count: 1
+---
+
+# ERC: Physically Transferrable Token
+
+---
+
+## eip:
+title: Physically Transferrable Token
+description: Interface for using physical chips to control tokens and provide escrow for their exchange
+discussions-to:
+status: Idea
+type: Standards Track
+category: ERC
+created: 2022-10-20
+requires: 165
+
+## Abstract
+
+This standard proposes an interface for exchanging physical items for ETH through an escrow service. The non-fungible tokens must only be transferred using a physical device that can generate transfer codes without an internet connection.
+
+## Motivation
+
+This proposal is motivated to add blockchain transparency and utility to physical items and include an escrow for their exchange. This proposal could be implemented for the sale of vehicles and homes or electronic devices in general. Compared to ECDSA methods proposed in the past, using a pre-determined merkle tree database is less overhead for device creators and allows devices to generate their codes without needing to reference the network for anything. The device is out of scope.
+
+## Specification
+
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in RFC 2119.
+
+Each token MUST be controlled by a physical chip. The physical chip SHOULD contain a merkle tree database that MUST chronologically release codes that increase in size. The escrow system MUST ensure old codes cannot be used after the new owner is stored.
+
+**Every PTT compliant contract MUST implement the `IPTT` and `ERC165` interfaces (subject to “caveats” below):**
+
+```solidity
+interface IPTT {
+    /// @notice Emits when receiving address sends payment for offer
+    /// @dev MUST emit in initializeOffer
+    /// @param _from The address who owns the _tokenId
+    /// @param _to The transferee address
+    /// @param _tokenId The token ID for the offer
+    /// @param _offer The offer amount for the token ID
+    event InitializeOffer(
+        address indexed _from,
+        address indexed _to,
+        uint256 indexed _tokenId,
+        uint256 _offer
+    );
+
+    /// @notice Emits when receiving address reverts offer
+    /// @dev MUST emit in revertOffer
+    /// @param _from The address who owns the _tokenId
+    /// @param _to The transferee address
+    /// @param _tokenId The token ID for the offer
+    /// @param _offer The offer amount for the token ID
+    event RevertOffer(
+        address indexed _from,
+        address indexed _to,
+        uint256 indexed _tokenId,
+        uint256 _offer
+    );
+
+    /// @notice Emits when owner accepts offer and gives transferee item
+    /// @dev MUST emit in acceptOffer
+    /// @param _from The address who owns the _tokenId
+    /// @param _to The transferee address
+    /// @param _tokenId The token ID for the offer
+    /// @param _offer The offer amount for the token ID
+    event AcceptOffer(
+        address indexed _from,
+        address indexed _to,
+        uint256 indexed _tokenId,
+        uint256 _offer
+    );
+
+    /// @notice Emits when receiving address refunds offer
+    /// @dev MUST emit in refundOffer
+    /// @param _from The address who owns the _tokenId
+    /// @param _to The transferee address
+    /// @param _tokenId The token ID for the offer
+    /// @param _offer The offer amount for the token ID
+    event RefundOffer(
+        address indexed _from,
+        address indexed _to,
+        uint256 indexed _tokenId,
+        uint256 _offer
+    );
+
+    /// @notice Emits when transferee confirms their transfer
+    /// @dev Compatible with ERC-721 and MUST emit with transfer
+    /// @param _from The address who owns the _tokenId
+    /// @param _to The transferee address
+    /// @param _tokenId The token ID for the offer
+    event Transfer(
+        address indexed _from,
+        address indexed _to,
+        uint256 indexed _tokenId
+    );
+
+    /// @notice Initialize a token offer for transferee
+    /// @dev MUST emit InitializeOffer event
+    /// @param _transferee The potential transferee of the offer
+    /// @param _tokenId The token ID to offer ETH for
+    function initializeOffer(address _transferee, uint256 _tokenId)
+        external
+        payable;
+
+    /// @notice Revert a token offer
+    /// @dev MUST emit RevertOffer event
+    /// @param _tokenId The token ID to revert offer for
+    function revertOffer(uint256 _tokenId) external;
+
+    /// @notice Accept a token offer but does not send payment
+    /// @dev MUST emit AcceptOffer event and prevent revertOffer
+    /// @param _from The address that owners the token
+    /// @param _to The address who will receive the token
+    /// @param _tokenId The token ID to accept offer for
+    function acceptOffer(
+        address _from,
+        address _to,
+        uint256 _tokenId
+    ) external;
+
+    /// @notice Refund a token offer
+    /// @dev MUST emit RefundOffer event
+    /// @param _transferee The transferee to receive refund
+    /// @param _tokenId The token ID to refund offer for
+    function refundOffer(address _transferee, uint256 _tokenId) external;
+
+    /// @notice Transfers the sends ETH to the _from address
+    /// @dev Compatible with ERC-721 and MUST emit Transfer event
+    /// @param _from The address that owners the token
+    /// @param _to The address who will receive the token
+    /// @param _tokenId The token ID to transfer
+    /// @param _code An indexed code from the merkle tree database
+    /// @param _proof The proof for the code
+    function transfer(
+        address _from,
+        address _to,
+        uint256 _tokenId,
+        string memory _code,
+        bytes32[] calldata _proof
+    ) external;
+
+    /// @notice The owner of a token
+    /// @dev Compatible with ERC-721 and MUST be set when Transfer emits
+    /// @param _tokenId The owner token ID
+    function ownerOf(uint256 _tokenId) external view returns (address);
+
+    /// @notice Transferee for the token offer
+    /// @dev The transferee MUST be set when AcceptOffer emits
+    /// @param _tokenId The token ID to the transferee
+    function transferee(uint256 _tokenId) external view returns (address);
+
+    /// @notice The offer amount for a token ID for transferee
+    /// @dev The offer MUST be set when InitializeOffer emits
+    /// @param _transferee The transferee for the offer
+    /// @param _tokenId The token ID for the offer
+    function offer(address _transferee, uint256 _tokenId)
+        external
+        view
+        returns (uint256);
+}
+```
+
+The `initializeOffer` function MUST emit the `InitializeOffer` event
+
+The `revertOffer` function MUST emit the `RevertOffer` event
+
+The `acceptOffer` function MUST emit the `AcceptOffer` event
+
+The `refundOffer` function MUST emit the `RefundOffer` event
+
+The `transfer` function MUST emit the `Transfer` event
+
+The `transferee` address MUST be set when `AcceptOffer` emits
+
+The `ownerOf` address MUST be set when `Transfer` emits
+
+The `Transfer` event MUST emit after token genesis from the zero address and all token transfers
+
+## Rationale
+
+The interface includes an escrow system to ensure a smooth physical transfer process between the old owner and new owner, and a set of events for the physical trade off of items.
+
+## Backwards Compatibility
+
+This proposal is backwards compatible with the Transfer event and ownerOf specs from ERC-721.
+
+## Reference Implementation
+
+The following is a basic non-optimized implementation of `IPTT`:
+
+```solidity
+import "./IPTT.sol";
+import "@0xver/solver/library/Merkle.sol";
+import "@0xver/solver/interface/IERC165.sol";
+
+contract PTT is IPTT, IERC165 {
+    mapping(uint256 => address) public override(IPTT) ownerOf;
+    mapping(uint256 => address) public override(IPTT) transferee;
+    mapping(address => mapping(uint256 => uint256)) public override(IPTT) offer;
+    mapping(uint256 => mapping(bytes32 => uint256)) private _processedMap;
+    mapping(uint256 => uint256) private _lastProcessed;
+    mapping(uint256 => bytes32) private _tokenRootMap;
+    uint256 private _currentTokenId;
+
+    constructor(bytes32 _root) {
+        _currentTokenId += 1;
+        ownerOf[_currentTokenId] = msg.sender;
+        _tokenRootMap[_currentTokenId] = _root;
+        emit Transfer(address(0), msg.sender, _currentTokenId);
+    }
+
+    function initializeOffer(address _transferee, uint256 _tokenId)
+        public
+        payable
+        override(IPTT)
+    {
+        require(transferee[_tokenId] == address(0));
+        offer[_transferee][_tokenId] = msg.value;
+        emit InitializeOffer(
+            ownerOf[_tokenId],
+            _transferee,
+            _tokenId,
+            msg.value
+        );
+    }
+
+    function revertOffer(uint256 _tokenId) public override(IPTT) {
+        require(transferee[_tokenId] == address(0));
+        uint256 amount = offer[msg.sender][_tokenId];
+        delete offer[msg.sender][_tokenId];
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "ETHER_TRANSFER_FAILED");
+        emit RevertOffer(ownerOf[_tokenId], msg.sender, _tokenId, amount);
+    }
+
+    function acceptOffer(
+        address _from,
+        address _to,
+        uint256 _tokenId
+    ) public override(IPTT) {
+        require(
+            transferee[_tokenId] == address(0) &&
+                _from == ownerOf[_tokenId] &&
+                msg.sender == ownerOf[_tokenId]
+        );
+        transferee[_tokenId] = _to;
+        emit AcceptOffer(
+            ownerOf[_tokenId],
+            _to,
+            _tokenId,
+            offer[_to][_tokenId]
+        );
+    }
+
+    function refundOffer(address _transferee, uint256 _tokenId)
+        public
+        override(IPTT)
+    {
+        require(
+            transferee[_tokenId] != address(0) &&
+                ownerOf[_tokenId] == msg.sender
+        );
+        delete transferee[_tokenId];
+        uint256 amount = offer[_transferee][_tokenId];
+        delete offer[_transferee][_tokenId];
+        (bool success, ) = payable(_transferee).call{value: amount}("");
+        require(success, "ETHER_TRANSFER_FAILED");
+        emit RefundOffer(msg.sender, _transferee, _tokenId, amount);
+    }
+
+    function transfer(
+        address _from,
+        address _to,
+        uint256 _tokenId,
+        string memory _code,
+        bytes32[] calldata _proof
+    ) public override(IPTT) {
+        require(
+            _from == ownerOf[_tokenId] &&
+                _isValidTransferCode(_tokenId, _code, _proof),
+            "TRANSFER_FAILED"
+        );
+        _processLeaf(_tokenId, _code, _proof);
+        if (transferee[_tokenId] != address(0)) {
+            require(transferee[_tokenId] == _to);
+            delete transferee[_tokenId];
+            uint256 amount = offer[_to][_tokenId];
+            delete offer[_to][_tokenId];
+            (bool success, ) = payable(_from).call{value: amount}("");
+            require(success, "ETHER_TRANSFER_FAILED");
+        }
+        ownerOf[_tokenId] = _to;
+        emit Transfer(_from, _to, _tokenId);
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        pure
+        virtual
+        override(IERC165)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IERC165).interfaceId ||
+            interfaceId == type(IPTT).interfaceId;
+    }
+
+    function _numberfy(string memory _code)
+        internal
+        pure
+        returns (uint256 number)
+    {
+        for (uint256 i = 0; i  9
+            ) {
+                return 0;
+            }
+            number +=
+                (uint8(bytes(_code)[i]) - 48) *
+                10**(bytes(_code).length - i - 1);
+        }
+    }
+
+    function _processLeaf(
+        uint256 _tokenId,
+        string memory _code,
+        bytes32[] calldata _proof
+    ) private {
+        bytes32 leaf = keccak256(abi.encodePacked(_code));
+        require(
+            Merkle.verify(_proof, _tokenRootMap[_tokenId], leaf),
+            "INVALID_PROOF"
+        );
+        _processedMap[_tokenId][leaf] = _numberfy(_code);
+        _lastProcessed[_tokenId] = _numberfy(_code);
+    }
+
+    function _isValidTransferCode(
+        uint256 _tokenId,
+        string memory _code,
+        bytes32[] calldata _proof
+    ) private view returns (bool) {
+        if (_numberfy(_code) <= _lastProcessed[_tokenId]) {
+            return false;
+        }
+        bytes32 leaf = keccak256(abi.encodePacked(_code));
+        return Merkle.verify(_proof, _tokenRootMap[_tokenId], leaf);
+    }
+}
+```
+
+## Security Considerations
+
+The escrow system should ensure old codes can’t be used by previous owners. This can be done by increasing the size of the codes and checking that each code is larger than the previous. After an offer is accepted via `acceptOffer` it should be implemented so `revertOffer` cannot occur after that point.
+
+## Copyright
+
+Copyright and related rights waived via CC0.

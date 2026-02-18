@@ -1,0 +1,380 @@
+---
+source: magicians
+topic_id: 8941
+title: "EIP-5006: ERC-1155 Usage Rights Extension"
+author: 0xanders
+date: "2022-04-16"
+category: EIPs
+tags: [nft, token, erc1155]
+url: https://ethereum-magicians.org/t/eip-5006-erc-1155-usage-rights-extension/8941
+views: 2864
+likes: 1
+posts_count: 3
+---
+
+# EIP-5006: ERC-1155 Usage Rights Extension
+
+---
+
+## eip: 5006
+title: ERC-1155U, ERC-1155 Usage Rights Extension
+description: Add a user role with restricted permissions to ERC-1155 tokens.
+author: Lance (), Anders (), Shrug
+discussions-to:
+status: Draft
+type: Standards Track
+category: ERC
+created: 2022-04-12
+requires: 165, 1155
+
+## Abstract
+
+This standard is an extension of ERC-1155. It proposes an additional role (`user`) which can be granted to addresses. The `user` role represents permission to “use” the NFT, but not be able to transfer it or set operators.
+
+## Motivation
+
+Some NFTs have certain utilities. For example: in-game NFTs can be “used” to play, virtual land can be “used” to build scenes, and music NFTs can be “used” while listening. In some cases, the owner and user may not be the same account. Someone may purchase an NFT with utility, but they may not have time or ability to use it, so separating the “use” right from ownership makes a lot of sense.
+
+Nowadays, many NFTs are managed by adding the role of **controller/operator**. Accounts in these roles can perform specific usage actions but can’t approve or transfer the NFT like an owner.
+
+It is conceivable that with the further expansion of NFT application, the problem of usage rights management will become more common, so it is necessary to establish a unified standard to facilitate collaboration among all applications.
+
+By adding **user**, it enables multiple protocols to integrate and build on top of usage rights.
+
+## Specification
+
+The keywords “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY” and “OPTIONAL” in this document are to be interpreted as described in RFC 2119.
+
+```solidity
+// SPDX-License-Identifier: CC0-1.0
+
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+
+interface IERC5006 is IERC1155 {
+    event UpdateUser(
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256 id,
+        uint256 value
+    );
+
+    /**
+     * @dev Returns the amount of tokens of token type `id` used by `user`.
+     *
+     * Requirements:
+     *
+     * - `user` cannot be the zero address.
+     */
+    function balanceOfUser(address user, uint256 id)
+        external
+        view
+        returns (uint256);
+
+    /**
+     * @dev Returns the amount of frozen tokens of token type `id` by `owner`.
+     *
+     * Requirements:
+     *
+     * - `owner` cannot be the zero address.
+     */
+    function frozenOfOwner(address owner, uint256 id)
+        external
+        view
+        returns (uint256);
+
+    /**
+     * @dev Returns the amount of tokens of token type `id` used by `user`.
+     *
+     * Requirements:
+     *
+     * - `user` cannot be the zero address.
+     * - `owner` cannot be the zero address.
+     */
+    function balanceOfUserFromOwner(
+        address user,
+        address owner,
+        uint256 id
+    ) external view returns (uint256);
+
+    /// @notice set the user of a NFT
+    /// @dev The zero address indicates there is no user
+    /// Throws if `tokenId` is not valid NFT
+    /// @param user  The new user of the NFT
+    /// @param amount  The new user could use
+    function setUser(
+        address owner,
+        address user,
+        uint256 id,
+        uint256 amount
+    ) external;
+}
+
+```
+
+## Rationale
+
+Many developers are trying to develop based on the NFT utility, and some of them have added roles already,  but there are some key problems need to be solved. The advantages of this standard are below.
+
+### Clear Permissions Management
+
+Usage rights are part of ownership, so **owner** can modify **user** at any time, while **user** is only granted some specific permissions, such as **user** usually does not have permission to make permanent changes to NFT’s Metadata.
+
+NFTs may be used in multiple applications, and adding the user role to NFTs makes it easier for the application to make special grants of rights.
+
+### Easy Third-Party Integration
+
+The standard makes it easier for third-party protocols to manage NFT usage rights without permission from the NFT issuer or the NFT application.
+
+## Backwards Compatibility
+
+As mentioned in the specifications section, this standard can be fully ERC compatible by adding an extension function set.
+
+In addition, new functions introduced in this standard have many similarities with the existing functions in ERC1155. This allows developers to easily adopt the standard quickly.
+
+## Test Cases
+
+run in Terminal:
+
+```auto
+npm hardhat test
+```
+
+### Test Code
+
+```TypeScript
+import { expect } from "chai";
+import { ethers } from "hardhat";
+
+describe("Test ERC5006", function () {
+    let alice, bob, carl;
+    let contract;
+
+    beforeEach(async function () {
+        [alice, bob, carl] = await ethers.getSigners();
+
+        const ERC5006Demo = await ethers.getContractFactory("ERC5006Demo");
+
+        contract = await ERC5006Demo.deploy();
+    });
+
+    describe("", function () {
+        it("Should set user to bob", async function () {
+
+            await contract.mint(alice.address, 1, 100);
+
+            await contract.setUser(alice.address, bob.address, 1, 10);
+
+            expect(await contract.balanceOfUser(bob.address, 1)).equals(10);
+
+            expect(await contract.balanceOfUserFromOwner(bob.address, alice.address, 1)).equals(10);
+
+            expect(await contract.frozenOfOwner(alice.address, 1)).equals(10);
+
+            await contract.setUser(alice.address, bob.address, 1, 80);
+
+            expect(await contract.balanceOfUser(bob.address, 1)).equals(80);
+
+            expect(await contract.balanceOfUserFromOwner(bob.address, alice.address, 1)).equals(80);
+
+            expect(await contract.frozenOfOwner(alice.address, 1)).equals(80);
+
+            await contract.setUser(alice.address, bob.address, 1, 0);
+
+            expect(await contract.balanceOfUser(bob.address, 1)).equals(0);
+
+            expect(await contract.balanceOfUserFromOwner(bob.address, alice.address, 1)).equals(0);
+
+            expect(await contract.frozenOfOwner(alice.address, 1)).equals(0);
+
+        });
+
+        it("Should transfer success", async function () {
+
+            await contract.mint(alice.address, 1, 100);
+
+            await contract.setUser(alice.address, bob.address, 1, 10);
+
+            await contract.safeTransferFrom(alice.address, carl.address, 1, 90, "0x");
+
+            expect(await contract.balanceOfUser(bob.address, 1)).equals(10);
+
+            expect(await contract.balanceOfUserFromOwner(bob.address, alice.address, 1)).equals(10);
+
+            expect(await contract.frozenOfOwner(alice.address, 1)).equals(10);
+
+            expect(await contract.balanceOf(alice.address, 1)).equals(10);
+
+        });
+
+        it("Should burn success", async function () {
+
+            await contract.mint(alice.address, 1, 100);
+
+            await contract.setUser(alice.address, bob.address, 1, 10);
+
+            await contract.burn(alice.address, 1, 90);
+
+            expect(await contract.balanceOfUser(bob.address, 1)).equals(10);
+
+            expect(await contract.balanceOfUserFromOwner(bob.address, alice.address, 1)).equals(10);
+
+            expect(await contract.frozenOfOwner(alice.address, 1)).equals(10);
+
+            expect(await contract.balanceOf(alice.address, 1)).equals(10);
+        });
+
+    });
+
+});
+```
+
+Test contract:
+
+```solidity
+// SPDX-License-Identifier: CC0-1.0
+
+pragma solidity ^0.8.0;
+
+import "./ERC5006Demo.sol";
+
+contract ERC5006Demo is ERC5006 {
+    function mint(
+        address to,
+        uint256 id,
+        uint256 amount
+    ) public {
+        _mint(to, id, amount, "");
+    }
+
+    function burn(
+        address from,
+        uint256 id,
+        uint256 amount
+    ) public {
+        _burn(from, id, amount);
+    }
+
+}
+
+```
+
+## Reference Implementation
+
+```solidity
+// SPDX-License-Identifier: CC0-1.0
+
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "./IERC5006.sol";
+
+contract ERC5006 is ERC1155, IERC5006 {
+    /**mapping(tokenId=>mapping(user=>amount)) */
+    mapping(uint256 => mapping(address => uint256)) private _userAllowances;
+
+    /**mapping(tokenId=>mapping(owner=>amount)) */
+    mapping(uint256 => mapping(address => uint256)) private _frozen;
+
+    /** mapping(tokenId=>mapping(owner=>mapping(user=>amount))) */
+    mapping(uint256 => mapping(address => mapping(address => uint256)))
+        private _allowances;
+
+    constructor() ERC1155("") {}
+
+    function balanceOfUser(address user, uint256 id)
+        public
+        view
+        returns (uint256)
+    {
+        return _userAllowances[id][user];
+    }
+
+    function balanceOfUserFromOwner(
+        address user,
+        address owner,
+        uint256 id
+    ) public view returns (uint256) {
+        return _allowances[id][owner][user];
+    }
+
+    function frozenOfOwner(address owner, uint256 id)
+        external
+        view
+        returns (uint256)
+    {
+        return _frozen[id][owner];
+    }
+
+    function setUser(
+        address owner,
+        address user,
+        uint256 id,
+        uint256 amount
+    ) public virtual {
+        require(user != address(0), "ERROR: transfer to the zero address");
+        address operator = msg.sender;
+        uint256 fromBalance = balanceOf(owner, id);
+        _frozen[id][owner] -= _allowances[id][owner][user];
+        uint256 frozen = _frozen[id][owner];
+        require(
+            fromBalance - frozen >= amount,
+            "ERROR: insufficient balance for setUser"
+        );
+        unchecked {
+            _frozen[id][owner] = frozen + amount;
+        }
+        _userAllowances[id][user] -= _allowances[id][owner][user];
+        _userAllowances[id][user] += amount;
+        _allowances[id][owner][user] = amount;
+
+        emit UpdateUser(operator, owner, user, id, amount);
+    }
+
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual override {
+        for (uint256 i = 0; i = amounts[i],
+                    "ERROR: insufficient balance for transfer"
+                );
+            }
+        }
+    }
+
+    /// @dev See {IERC165-supportsInterface}.
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IERC5006).interfaceId || super.supportsInterface(interfaceId);
+    }
+}
+
+```
+
+## Security Considerations
+
+This EIP standard can completely protect the rights of the owner, the owner can change the NFT user.
+
+## Replies
+
+**lolieatapple** (2022-09-06):
+
+![](https://ethereum-magicians.org/user_avatar/ethereum-magicians.org/0xanders/48/5635_2.png) 0xanders:
+
+> Reference Implementation
+
+Hi, I saw the code here is different with code in: [ERC-5006: Rental NFT, NFT User Extension](https://eips.ethereum.org/EIPS/eip-5006)
+
+Which one is the latest?
+
+---
+
+**0xanders** (2022-09-06):
+
+The code in github is the latest.
+
