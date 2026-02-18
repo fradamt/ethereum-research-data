@@ -164,6 +164,22 @@ class TestBuildSearchParams:
         params = build_search_params(args)
         assert "hybrid" not in params
 
+    def test_hybrid_expands_query(self) -> None:
+        args = _parse_query(["SSZ Merkleization", "--hybrid"])
+        params = build_search_params(args)
+        assert "simple serialize" in params["q"].lower()
+        assert params["q"].startswith("SSZ Merkleization")
+
+    def test_no_expansion_without_hybrid(self) -> None:
+        args = _parse_query(["SSZ Merkleization"])
+        params = build_search_params(args)
+        assert params["q"] == "SSZ Merkleization"
+
+    def test_no_expand_flag_disables_expansion(self) -> None:
+        args = _parse_query(["SSZ Merkleization", "--hybrid", "--no-expand"])
+        params = build_search_params(args)
+        assert params["q"] == "SSZ Merkleization"
+
 
 # ===================================================================
 # format_hit
@@ -342,6 +358,16 @@ class TestCLIParsing:
         parser = build_parser()
         args = parser.parse_args(["query", "test", "--source-kind", "generic"])
         assert args.source_kind == "generic"
+
+    def test_no_expand_flag(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["query", "test", "--no-expand"])
+        assert args.no_expand is True
+
+    def test_no_expand_default_false(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["query", "test"])
+        assert args.no_expand is False
 
     def test_apply_terminology_command(self) -> None:
         parser = build_parser()

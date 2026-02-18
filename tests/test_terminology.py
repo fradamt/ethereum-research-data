@@ -9,6 +9,7 @@ import pytest
 
 from erd_index.index.terminology import (
     apply_terminology_settings,
+    expand_query,
     get_ethereum_dictionary,
     get_ethereum_synonyms,
 )
@@ -116,6 +117,78 @@ class TestDictionary:
         d1.append("bogus-term")
         d2 = get_ethereum_dictionary()
         assert "bogus-term" not in d2
+
+
+# ===================================================================
+# expand_query
+# ===================================================================
+
+
+class TestExpandQuery:
+    """Test query expansion for semantic search."""
+
+    def test_expands_ssz(self) -> None:
+        result = expand_query("SSZ Merkleization")
+        assert "Simple Serialize" in result or "simple serialize" in result
+        assert result.startswith("SSZ Merkleization")
+
+    def test_expands_kzg(self) -> None:
+        result = expand_query("KZG commitment scheme")
+        assert "kate polynomial commitment" in result
+        assert result.startswith("KZG commitment scheme")
+
+    def test_expands_multiple(self) -> None:
+        result = expand_query("SSZ and KZG in DAS")
+        assert "simple serialize" in result
+        assert "kate polynomial commitment" in result
+        assert "data availability sampling" in result
+
+    def test_no_expansion_for_excluded_abbreviations(self) -> None:
+        """Common/short abbreviations (evm, cl, el, blob, eip) should not expand."""
+        for term in ("EVM opcodes", "CL spec", "EL client", "blob gas", "EIP-4844"):
+            result = expand_query(term)
+            assert result == term, f"Unexpectedly expanded: {term!r} → {result!r}"
+
+    def test_no_expansion_when_no_match(self) -> None:
+        query = "validator slashing penalty"
+        assert expand_query(query) == query
+
+    def test_case_insensitive(self) -> None:
+        for variant in ("SSZ", "ssz", "Ssz"):
+            result = expand_query(f"{variant} container")
+            assert "simple serialize" in result
+
+    def test_preserves_original_query(self) -> None:
+        """Original query text appears unchanged at the start."""
+        original = "How does PBS work?"
+        result = expand_query(original)
+        assert result.startswith(original)
+
+    def test_handles_punctuation(self) -> None:
+        """Abbreviations followed by punctuation should still be detected."""
+        result = expand_query("What is SSZ?")
+        assert "simple serialize" in result
+
+    def test_handles_slashes(self) -> None:
+        """Abbreviations separated by slashes should be detected."""
+        result = expand_query("KZG/DAS integration")
+        assert "kate polynomial commitment" in result
+        assert "data availability sampling" in result
+
+    def test_hyphenated_abbreviation(self) -> None:
+        result = expand_query("LMD-GHOST fork choice")
+        assert "latest message driven ghost" in result
+
+    def test_expansion_is_deterministic(self) -> None:
+        q = "SSZ KZG DAS"
+        assert expand_query(q) == expand_query(q)
+
+    def test_empty_query(self) -> None:
+        assert expand_query("") == ""
+
+    def test_peerdas_expands(self) -> None:
+        result = expand_query("PeerDAS networking")
+        assert "peer data availability sampling" in result
 
 
 # ===================================================================

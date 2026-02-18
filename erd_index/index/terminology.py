@@ -7,11 +7,17 @@ custom dictionary of compound terms that should be tokenized as single units.
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.request
 
-__all__ = ["apply_terminology_settings", "get_ethereum_dictionary", "get_ethereum_synonyms"]
+__all__ = [
+    "apply_terminology_settings",
+    "expand_query",
+    "get_ethereum_dictionary",
+    "get_ethereum_synonyms",
+]
 
 # Timeout for HTTP requests to Meilisearch.
 _TIMEOUT = 10
@@ -86,6 +92,43 @@ def get_ethereum_synonyms() -> dict[str, list[str]]:
 def get_ethereum_dictionary() -> list[str]:
     """Return custom dictionary entries for Meilisearch tokenizer."""
     return list(_DICTIONARY)
+
+
+# ---------------------------------------------------------------------------
+# Query expansion for semantic search
+# ---------------------------------------------------------------------------
+
+# Abbreviations that are safe to expand in queries.  Excludes short or
+# ambiguous terms (cl, el, il, blob, eip, evm, bls) that could match
+# non-Ethereum contexts or add noise to common queries.
+_EXPANDABLE: frozenset[str] = frozenset({
+    "ssz", "kzg", "das", "pbs", "mev", "ssf", "peerdas",
+    "lmd-ghost", "ffg", "rlp", "mpt", "eof", "randao",
+})
+
+_TOKEN_RE = re.compile(r"[\w-]+")
+
+
+def expand_query(query: str) -> str:
+    """Expand Ethereum abbreviations in the query for better semantic search.
+
+    Appends the primary expansion of recognized abbreviations so that the
+    embedding model receives richer context.  Only expands terms in
+    ``_EXPANDABLE`` to avoid noise from common/short abbreviations.
+
+    Example::
+
+        >>> expand_query("SSZ Merkleization")
+        'SSZ Merkleization Simple Serialize'
+    """
+    tokens = {m.group().lower() for m in _TOKEN_RE.finditer(query)}
+    expansions: list[str] = []
+    for token in sorted(tokens):
+        if token in _EXPANDABLE and token in _ABBREVIATIONS:
+            expansions.append(_ABBREVIATIONS[token][0])
+    if not expansions:
+        return query
+    return query + " " + " ".join(expansions)
 
 
 def apply_terminology_settings(meili_url: str, admin_key: str, index_uid: str) -> None:

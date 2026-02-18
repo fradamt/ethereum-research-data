@@ -119,15 +119,26 @@ def _meili_request(
 
 def build_search_params(args: argparse.Namespace) -> dict:
     """Build the Meilisearch search payload from parsed CLI args."""
-    params: dict = {"q": args.query_text, "limit": args.limit}
+    query_text = args.query_text
+
+    # Hybrid
+    ratio = getattr(args, "hybrid", None)
+    if ratio is not None:
+        # Expand Ethereum abbreviations so the embedding model gets richer
+        # context.  Keyword search already has Meilisearch synonyms.
+        no_expand = getattr(args, "no_expand", False)
+        if not no_expand:
+            from erd_index.index.terminology import expand_query
+
+            query_text = expand_query(query_text)
+
+    params: dict = {"q": query_text, "limit": args.limit}
 
     # Filters
     filters = _build_filters(args)
     if filters:
         params["filter"] = " AND ".join(filters)
 
-    # Hybrid
-    ratio = getattr(args, "hybrid", None)
     if ratio is not None:
         params["hybrid"] = {"semanticRatio": ratio, "embedder": "default"}
 
@@ -361,6 +372,10 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument(
         "--include-code", action="store_true",
         help="Include code chunks in results (excluded by default)",
+    )
+    q.add_argument(
+        "--no-expand", action="store_true",
+        help="Disable query expansion for hybrid search (expands Ethereum abbreviations by default)",
     )
 
     # --- stats ---
