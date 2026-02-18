@@ -740,9 +740,136 @@ BENCHMARK_QUERIES: list[dict] = [
         ],
         "expected_source_kinds": ["forum"],
     },
+    {
+        "id": "rlp-encoding",
+        "query": "RLP recursive length prefix encoding",
+        "category": "jargon",
+        "expand_for_hybrid": True,
+        "relevance_patterns": [
+            r"(?i)\bRLP\b",
+            r"(?i)recursive.?length.?prefix",
+            r"(?i)RLP.*(encod|decod|serial)",
+        ],
+        "strong_patterns": [
+            r"(?i)\bRLP\b.*(encod|decod|serial|format|prefix)",
+            r"(?i)recursive.?length.?prefix",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum", "eip"],
+    },
+    {
+        "id": "vdf-construction",
+        "query": "VDF verifiable delay function",
+        "category": "jargon",
+        "expand_for_hybrid": True,
+        "relevance_patterns": [
+            r"(?i)\bVDF\b",
+            r"(?i)verifiable.?delay.?function",
+            r"(?i)delay.*function.*verif",
+            r"(?i)VDF.*(proof|RANDAO|random)",
+        ],
+        "strong_patterns": [
+            r"(?i)\bVDF\b.*(verifiable|delay|construct|proof|RANDAO)",
+            r"(?i)verifiable.?delay.?function",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum"],
+    },
+    {
+        "id": "weak-subjectivity",
+        "query": "weak subjectivity checkpoint",
+        "category": "jargon",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)weak.?subjectiv",
+            r"(?i)subjectiv.*checkpoint",
+            r"(?i)checkpoint.?sync",
+            r"(?i)long.?range.?attack",
+        ],
+        "strong_patterns": [
+            r"(?i)weak.?subjectiv.*(checkpoint|period|bound|sync)",
+            r"(?i)checkpoint.*(sync|subjectiv)",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum", "eip"],
+    },
     # =========================================================================
     # ADDITIONAL CONCEPTUAL — protocol-level design questions
     # =========================================================================
+    {
+        "id": "preconfirmations",
+        "query": "preconfirmations based preconfs",
+        "category": "conceptual",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)preconfirm",
+            r"(?i)preconf",
+            r"(?i)pre.?confirm",
+            r"(?i)based.*preconf",
+            r"(?i)commit.?boost",
+        ],
+        "strong_patterns": [
+            r"(?i)preconfirm.*(design|mechanism|protocol|based|proposer|BFT)",
+            r"(?i)based.*preconf",
+            r"(?i)leaderless.*preconf",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum"],
+    },
+    {
+        "id": "execution-tickets",
+        "query": "execution tickets proposer market",
+        "category": "conceptual",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)execution.?ticket",
+            r"(?i)ticket.*propos",
+            r"(?i)propos.*ticket",
+            r"(?i)execution.*auction",
+            r"(?i)sealed.*execution",
+        ],
+        "strong_patterns": [
+            r"(?i)execution.?ticket.*(market|design|mechanism|auction|proposer)",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum"],
+    },
+    {
+        "id": "light-client",
+        "query": "light client sync committee protocol",
+        "category": "conceptual",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)light.?client",
+            r"(?i)sync.?committee",
+            r"(?i)light.*protocol",
+            r"(?i)beacon.*light",
+        ],
+        "strong_patterns": [
+            r"(?i)light.?client.*(sync|committee|protocol|proof|bridge)",
+            r"(?i)sync.?committee.*(light|client|protocol|slashing)",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum", "eip"],
+    },
     {
         "id": "state-expiry",
         "query": "state expiry mechanism",
@@ -881,9 +1008,105 @@ BENCHMARK_QUERIES: list[dict] = [
         ],
         "expected_source_kinds": ["forum"],
     },
+    {
+        "id": "nothing-at-stake-natural",
+        "query": "how does proof of stake prevent nothing at stake attacks",
+        "category": "natural",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)nothing.?at.?stake",
+            r"(?i)proof.?of.?stake.*(attack|security|assumption)",
+            r"(?i)stake.*(attack|security|nothing)",
+            r"(?i)long.?range.?attack",
+            r"(?i)slashing.*double",
+            r"(?i)fork.*penalty",
+        ],
+        "strong_patterns": [
+            r"(?i)nothing.?at.?stake.*(attack|problem|prevent)",
+            r"(?i)proof.?of.?stake.*(security|assumption|risk)",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum"],
+    },
+    {
+        "id": "validator-deposit-natural",
+        "query": "how much ETH do you need to run a validator",
+        "category": "natural",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)32\s*ETH",
+            r"(?i)deposit.*validator",
+            r"(?i)validator.*deposit",
+            r"(?i)minimum.*stak",
+            r"(?i)staking.*requirement",
+            r"(?i)solo.*stak",
+            r"(?i)no.*minimum.*stak",
+            r"(?i)join.*validator",
+            r"(?i)validator.*requirement",
+            r"(?i)run.*validator",
+            r"(?i)become.*validator",
+        ],
+        "strong_patterns": [
+            r"(?i)32\s*ETH.*(deposit|stake|validator|minimum)",
+            r"(?i)validator.*deposit.*(amount|minimum|32)",
+            r"(?i)minimum.*ETH.*stak",
+            r"(?i)requirement.*(run|join|become).*validator",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum", "eip"],
+    },
+    {
+        "id": "light-client-natural",
+        "query": "how do light clients verify the beacon chain without downloading everything",
+        "category": "natural",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)light.?client",
+            r"(?i)sync.?committee",
+            r"(?i)stateless.*verif",
+            r"(?i)light.*verif",
+            r"(?i)merkle.*proof.*light",
+        ],
+        "strong_patterns": [
+            r"(?i)light.?client.*(verif|proof|sync|protocol|trust)",
+            r"(?i)sync.?committee.*(light|verif|proof)",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum", "eip"],
+    },
     # =========================================================================
     # ADDITIONAL IDENTIFIERS — specific EIPs and function names
     # =========================================================================
+    {
+        "id": "eip-7732",
+        "query": "EIP-7732 enshrined PBS",
+        "category": "identifier",
+        "expand_for_hybrid": False,
+        "relevance_patterns": [
+            r"(?i)EIP.?7732",
+            r"(?i)enshrined.*PBS",
+            r"(?i)\bePBS\b",
+            r"(?i)enshrined.*proposer.?builder",
+        ],
+        "strong_patterns": [
+            r"(?i)EIP.?7732",
+            r"(?i)\bePBS\b.*(enshrined|design|spec|mechanism)",
+        ],
+        "anti_patterns": [
+            r"(?i)TestPush",
+            r"(?i)Mining attacks on PoRA",
+        ],
+        "expected_source_kinds": ["forum", "eip"],
+    },
     {
         "id": "eip-7702",
         "query": "EIP-7702 set EOA account code",
@@ -972,6 +1195,50 @@ BENCHMARK_QUERIES: list[dict] = [
             r"(?i)TestPush",
         ],
         "expected_source_kinds": ["forum", "eip"],
+        "modes_to_test": ["keyword", "hybrid_0.5", "hybrid_0.7", "semantic_1.0"],
+    },
+    {
+        "id": "bare-mev",
+        "query": "MEV",
+        "category": "edge",
+        "expand_for_hybrid": True,
+        "relevance_patterns": [
+            r"(?i)\bMEV\b",
+            r"(?i)maximal.?extractable.?value",
+            r"(?i)miner.?extractable.?value",
+            r"(?i)flashbot",
+        ],
+        "strong_patterns": [
+            r"(?i)\bMEV\b.*(extract|auction|mitigation|relay|boost|block)",
+            r"(?i)maximal.?extractable",
+        ],
+        "anti_patterns": [
+            r"(?i)Mining attacks on PoRA",
+            r"(?i)TestPush",
+        ],
+        "expected_source_kinds": ["forum"],
+        "modes_to_test": ["keyword", "hybrid_0.5", "hybrid_0.7", "semantic_1.0"],
+    },
+    {
+        "id": "bare-das",
+        "query": "DAS",
+        "category": "edge",
+        "expand_for_hybrid": True,
+        "relevance_patterns": [
+            r"(?i)\bDAS\b",
+            r"(?i)data.?availability.?sampl",
+            r"(?i)PeerDAS",
+            r"(?i)erasure.?cod",
+        ],
+        "strong_patterns": [
+            r"(?i)\bDAS\b.*(sampl|availability|polynomial|erasure|column)",
+            r"(?i)data.?availability.?sampl",
+        ],
+        "anti_patterns": [
+            r"(?i)Mining attacks on PoRA",
+            r"(?i)TestPush",
+        ],
+        "expected_source_kinds": ["forum"],
         "modes_to_test": ["keyword", "hybrid_0.5", "hybrid_0.7", "semantic_1.0"],
     },
     {

@@ -1,69 +1,69 @@
 {
-  "timestamp": "2026-02-18T18:39:08",
-  "total_queries": 42,
-  "total_searches": 166,
-  "elapsed_seconds": 2.6,
+  "timestamp": "2026-02-18T18:46:11",
+  "total_queries": 54,
+  "total_searches": 214,
+  "elapsed_seconds": 3.4,
   "aggregate": {
     "keyword": {
-      "precision_at_5": 0.948,
-      "strong_at_5": 0.762,
-      "contamination": 0.005,
-      "source_ok": "42/42"
+      "precision_at_5": 0.941,
+      "strong_at_5": 0.748,
+      "contamination": 0.004,
+      "source_ok": "54/54"
     },
     "hybrid_0.5": {
       "precision_at_5": 0.933,
-      "strong_at_5": 0.771,
-      "contamination": 0.005,
-      "source_ok": "42/42"
+      "strong_at_5": 0.77,
+      "contamination": 0.004,
+      "source_ok": "54/54"
     },
     "hybrid_0.7": {
-      "precision_at_5": 0.78,
-      "strong_at_5": 0.42,
-      "contamination": 0.015,
-      "source_ok": "41/41"
+      "precision_at_5": 0.781,
+      "strong_at_5": 0.464,
+      "contamination": 0.011,
+      "source_ok": "53/53"
     },
     "semantic_1.0": {
-      "precision_at_5": 0.78,
-      "strong_at_5": 0.42,
-      "contamination": 0.015,
-      "source_ok": "41/41"
+      "precision_at_5": 0.781,
+      "strong_at_5": 0.464,
+      "contamination": 0.011,
+      "source_ok": "53/53"
     }
   },
   "by_category": {
     "conceptual": {
-      "n": 8,
-      "keyword": 0.97,
-      "hybrid_0.5": 0.97,
-      "hybrid_0.7": 0.88,
-      "semantic_1.0": 0.88
+      "n": 11,
+      "keyword": 0.98,
+      "hybrid_0.5": 0.98,
+      "hybrid_0.7": 0.91,
+      "semantic_1.0": 0.91
     },
     "jargon": {
-      "n": 14,
+      "n": 17,
       "keyword": 1.0,
       "hybrid_0.5": 1.0,
-      "hybrid_0.7": 0.86,
-      "semantic_1.0": 0.86
+      "hybrid_0.7": 0.82,
+      "semantic_1.0": 0.82
     },
     "identifier": {
-      "n": 5,
-      "keyword": 0.96,
-      "hybrid_0.5": 0.96,
-      "hybrid_0.7": 0.9,
-      "semantic_1.0": 0.9
+      "n": 6,
+      "keyword": 0.97,
+      "hybrid_0.5": 0.97,
+      "hybrid_0.7": 0.92,
+      "semantic_1.0": 0.92
     },
     "natural": {
-      "n": 6,
-      "keyword": 0.73,
-      "hybrid_0.5": 0.93,
-      "hybrid_0.7": 0.97,
-      "semantic_1.0": 0.97
+      "n": 9,
+      "keyword": 0.71,
+      "hybrid_0.5": 0.87,
+      "hybrid_0.7": 0.87,
+      "semantic_1.0": 0.87
     },
     "edge": {
-      "n": 9,
+      "n": 11,
       "keyword": 0.98,
-      "hybrid_0.5": 0.78,
-      "hybrid_0.7": 0.4,
-      "semantic_1.0": 0.4
+      "hybrid_0.5": 0.82,
+      "hybrid_0.7": 0.45,
+      "semantic_1.0": 0.45
     }
   },
   "per_query": [
@@ -6532,6 +6532,1320 @@
       }
     },
     {
+      "id": "rlp-encoding",
+      "query": "RLP recursive length prefix encoding",
+      "category": "jargon",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Calldata compression via RLP",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:9923-calldata-compression-via-rlp.md:14:80",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Blob serialisation",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1705-blob-serialisation.md:68:80",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Native rollups",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-8079.md:77:120",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Separate gas type for calldata",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7706.md:164:224",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Tx Ordering via Block-level Randomness",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7956.md:45:131",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Calldata compression via RLP",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:9923-calldata-compression-via-rlp.md:14:80",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Separate gas type for calldata",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7706.md:164:224",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Blob serialisation",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1705-blob-serialisation.md:68:80",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Native rollups",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-8079.md:77:120",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Ethereum Node Records (ENR)",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-778.md:68:86",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 0.0,
+          "strong_at_5": 0.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Are STARKs ready for recursion?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1742-are-starks-ready-for-recursion.md:57:67",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Signature Merging for Large-Scale Consensus",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17386-signature-merging-for-large-scale-consensus.md:102:106",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Post Quantum Signature Aggregation: a Folding Approach",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:23639-post-quantum-signature-aggregation-a-folding-approach.md:154:177",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "EIP-8022: Calldata run-length encoding scheme",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25483-eip-8022-calldata-run-length-encoding-scheme.md:14:46",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "ERC: Short Representation for Leading Zeros in Address",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:17538-erc-short-representation-for-leading-zeros-in-address.md:89:102",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 0.0,
+          "strong_at_5": 0.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Are STARKs ready for recursion?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1742-are-starks-ready-for-recursion.md:57:67",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Signature Merging for Large-Scale Consensus",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17386-signature-merging-for-large-scale-consensus.md:102:106",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Post Quantum Signature Aggregation: a Folding Approach",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:23639-post-quantum-signature-aggregation-a-folding-approach.md:154:177",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "EIP-8022: Calldata run-length encoding scheme",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25483-eip-8022-calldata-run-length-encoding-scheme.md:14:46",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "ERC: Short Representation for Leading Zeros in Address",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:17538-erc-short-representation-for-leading-zeros-in-address.md:89:102",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "vdf-construction",
+      "query": "VDF verifiable delay function",
+      "category": "jargon",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Anyone working on Solidity-verifiable VDF?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4279-anyone-working-on-solidity-verifiable-vdf.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Using VRFs to randomly assign stakers to shards",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4451-using-vrfs-to-randomly-assign-stakers-to-shards.md:14:43",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Q + A on ETH 2.0 - Serenity session at Paris Council 2019",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:2861-q-a-on-eth-2-0-serenity-session-at-paris-council-2019.md:90:113:p3",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Anyone working on Solidity-verifiable VDF?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4279-anyone-working-on-solidity-verifiable-vdf.md:217:232",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Nakamoto Consensus with VDF and VRF",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5671-nakamoto-consensus-with-vdf-and-vrf.md:14:49",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Anyone working on Solidity-verifiable VDF?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4279-anyone-working-on-solidity-verifiable-vdf.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Using VRFs to randomly assign stakers to shards",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4451-using-vrfs-to-randomly-assign-stakers-to-shards.md:14:43",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Q + A on ETH 2.0 - Serenity session at Paris Council 2019",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:2861-q-a-on-eth-2-0-serenity-session-at-paris-council-2019.md:90:113:p3",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Nakamoto Consensus with VDF and VRF",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5671-nakamoto-consensus-with-vdf-and-vrf.md:14:49",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Anyone working on Solidity-verifiable VDF?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4279-anyone-working-on-solidity-verifiable-vdf.md:217:232",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Anyone working on Solidity-verifiable VDF?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4279-anyone-working-on-solidity-verifiable-vdf.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Combining Avalanche RANDAO and verifiable delay functions",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4544-combining-avalanche-randao-and-verifiable-delay-functions.md:14:51:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "VDF Proving with SnarkPack",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10096-vdf-proving-with-snarkpack.md:14:41",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Combining Avalanche RANDAO and verifiable delay functions",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4544-combining-avalanche-randao-and-verifiable-delay-functions.md:96:132:p2",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Verifiable delay functions and RANDAO manipulability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3777-verifiable-delay-functions-and-randao-manipulability.md:20:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Anyone working on Solidity-verifiable VDF?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4279-anyone-working-on-solidity-verifiable-vdf.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Combining Avalanche RANDAO and verifiable delay functions",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4544-combining-avalanche-randao-and-verifiable-delay-functions.md:14:51:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "VDF Proving with SnarkPack",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10096-vdf-proving-with-snarkpack.md:14:41",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Combining Avalanche RANDAO and verifiable delay functions",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:4544-combining-avalanche-randao-and-verifiable-delay-functions.md:96:132:p2",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Verifiable delay functions and RANDAO manipulability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3777-verifiable-delay-functions-and-randao-manipulability.md:20:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "weak-subjectivity",
+      "query": "weak subjectivity checkpoint",
+      "category": "jargon",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Deposit Contract Snapshot Interface",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4881.md:305:309",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Bound Historical Data in Execution Clients",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4444.md:83:103",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:142:148",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Deposit Contract Snapshot Interface",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4881.md:62:70",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:106:113",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Deposit Contract Snapshot Interface",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4881.md:305:309",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Bound Historical Data in Execution Clients",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4444.md:83:103",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:142:148",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Deposit Contract Snapshot Interface",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4881.md:62:70",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:106:113",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.8,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Bound Historical Data in Execution Clients",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4444.md:83:103",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Deposit Contract Snapshot Interface",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4881.md:305:309",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:113:123",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "A \"human readable\" subjectivity format proposal",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:71-a-human-readable-subjectivity-format-proposal.md:93:103",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:142:148",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.8,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Bound Historical Data in Execution Clients",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4444.md:83:103",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Deposit Contract Snapshot Interface",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-4881.md:305:309",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:113:123",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "A \"human readable\" subjectivity format proposal",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:71-a-human-readable-subjectivity-format-proposal.md:93:103",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "An updated roadmap for Stateless Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:9046-an-updated-roadmap-for-stateless-ethereum.md:142:148",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "preconfirmations",
+      "query": "preconfirmations based preconfs",
+      "category": "conceptual",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:27:31",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:31:41",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:45:61",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:41:45",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Based preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17353-based-preconfirmations.md:14:30:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:27:31",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:31:41",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:45:61",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Leaderless and Leader-Based Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19971-leaderless-and-leader-based-preconfirmations.md:41:45",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Based preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17353-based-preconfirmations.md:14:30:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.8,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Based preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17353-based-preconfirmations.md:14:30:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Towards an implementation of based preconfirmations leveraging restaking",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19211-towards-an-implementation-of-based-preconfirmations-leveragi.md:187:194",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Analyzing BFT & Proposer-Promised Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17963-analyzing-bft-proposer-promised-preconfirmations.md:19:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "The contention between preconfs and ePBS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19770-the-contention-between-preconfs-and-epbs.md:14:19",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Based preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17353-based-preconfirmations.md:31:34:p1",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.8,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Based preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17353-based-preconfirmations.md:14:30:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Towards an implementation of based preconfirmations leveraging restaking",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19211-towards-an-implementation-of-based-preconfirmations-leveragi.md:187:194",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Analyzing BFT & Proposer-Promised Preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17963-analyzing-bft-proposer-promised-preconfirmations.md:19:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "The contention between preconfs and ePBS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19770-the-contention-between-preconfs-and-epbs.md:14:19",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Based preconfirmations",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17353-based-preconfirmations.md:31:34:p1",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "execution-tickets",
+      "query": "execution tickets proposer market",
+      "category": "conceptual",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.4,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:119:143",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:69:92",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:28:37:p1",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:14:27:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:38:53:p2",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.4,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:119:143",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:69:92",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:28:37:p1",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:14:27:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Appointed Execution Proposers: Because the Proposer you know\u2026",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19284-appointed-execution-proposers-because-the-proposer-you-know.md:38:53:p2",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Execution Tickets",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17944-execution-tickets.md:53:77",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV resistant dynamic pricing auction of execution proposal rights",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20024-mev-resistant-dynamic-pricing-auction-of-execution-proposal.md:33:37",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Execution Tickets",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17944-execution-tickets.md:97:123",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV resistant dynamic pricing auction of execution proposal rights",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20024-mev-resistant-dynamic-pricing-auction-of-execution-proposal.md:27:33",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Proposers do play dice: Introducing random Execution Auctions (randEAs)",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20938-proposers-do-play-dice-introducing-random-execution-auctions.md:23:40",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Execution Tickets",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17944-execution-tickets.md:53:77",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV resistant dynamic pricing auction of execution proposal rights",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20024-mev-resistant-dynamic-pricing-auction-of-execution-proposal.md:33:37",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Execution Tickets",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17944-execution-tickets.md:97:123",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV resistant dynamic pricing auction of execution proposal rights",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20024-mev-resistant-dynamic-pricing-auction-of-execution-proposal.md:27:33",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Proposers do play dice: Introducing random Execution Auctions (randEAs)",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20938-proposers-do-play-dice-introducing-random-execution-auctions.md:23:40",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "light-client",
+      "query": "light client sync committee protocol",
+      "category": "conceptual",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Sync committee slashings",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7657.md:17:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Light client data backfill",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7658.md:17:27",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Sync committee slashings",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7657.md:303:309",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "zkCasper: A SNARK based protocol for verifying Casper FFG Consensus",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:15559-zkcasper-a-snark-based-protocol-for-verifying-casper-ffg-con.md:66:76",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Light client data backfill",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7658.md:154:167",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Sync committee slashings",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7657.md:17:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Light client data backfill",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7658.md:17:27",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Sync committee slashings",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7657.md:303:309",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "zkCasper: A SNARK based protocol for verifying Casper FFG Consensus",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:15559-zkcasper-a-snark-based-protocol-for-verifying-casper-ffg-con.md:66:76",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Light client data backfill",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-7658.md:154:167",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.8,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:101:107",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Simple Casper light client",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:828-simple-casper-light-client.md:14:23",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:261:267",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:21:29",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Incentives for running full Ethereum nodes",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1239-incentives-for-running-full-ethereum-nodes.md:179:191",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.8,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:101:107",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Simple Casper light client",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:828-simple-casper-light-client.md:14:23",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:261:267",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:21:29",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Incentives for running full Ethereum nodes",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1239-incentives-for-running-full-ethereum-nodes.md:179:191",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "state-expiry",
       "query": "state expiry mechanism",
       "category": "conceptual",
@@ -7846,6 +9160,882 @@
       }
     },
     {
+      "id": "nothing-at-stake-natural",
+      "query": "how does proof of stake prevent nothing at stake attacks",
+      "category": "natural",
+      "results": {
+        "keyword": {
+          "precision_at_5": 0.6,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "PoR ( Proof of Relevance ) - A New Blockchain Consensus Algorithm",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:2424-por-proof-of-relevance-a-new-blockchain-consensus-algorithm.md:26:75",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Attestation committee based full PoS chains",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:2259-attestation-committee-based-full-pos-chains.md:57:89",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Practical endgame on issuance policy",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20747-practical-endgame-on-issuance-policy.md:671:695:p2",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Vocdoni Protocol: Enabling Decentralized Voting for the Masses with ZK Technology",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:21036-vocdoni-protocol-enabling-decentralized-voting-for-the-masse.md:386:425",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Timing games in Proof-of-Stake",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13980-timing-games-in-proof-of-stake.md:158:163",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 0.8,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "PoR ( Proof of Relevance ) - A New Blockchain Consensus Algorithm",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:2424-por-proof-of-relevance-a-new-blockchain-consensus-algorithm.md:26:75",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Attestation committee based full PoS chains",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:2259-attestation-committee-based-full-pos-chains.md:57:89",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Censorship based on stake taint",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3379-censorship-based-on-stake-taint.md:14:21",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Practical endgame on issuance policy",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20747-practical-endgame-on-issuance-policy.md:671:695:p2",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "\"Dynamic\" Attacks On Eigenlayer",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:15178-dynamic-attacks-on-eigenlayer.md:14:74",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 0.4,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Censorship based on stake taint",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3379-censorship-based-on-stake-taint.md:14:21",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "\"Dynamic\" Attacks On Eigenlayer",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:15178-dynamic-attacks-on-eigenlayer.md:14:74",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Serenity Phase 0",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-2982.md:149:180",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Proof of stake basic asssumption risk",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:40-proof-of-stake-basic-asssumption-risk.md:139:164",
+              "relevant": false,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Conditional proof of stake hashcash",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1301-conditional-proof-of-stake-hashcash.md:14:67",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 0.4,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Censorship based on stake taint",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3379-censorship-based-on-stake-taint.md:14:21",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "\"Dynamic\" Attacks On Eigenlayer",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:15178-dynamic-attacks-on-eigenlayer.md:14:74",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Serenity Phase 0",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-2982.md:149:180",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Proof of stake basic asssumption risk",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:40-proof-of-stake-basic-asssumption-risk.md:139:164",
+              "relevant": false,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Conditional proof of stake hashcash",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1301-conditional-proof-of-stake-hashcash.md:14:67",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "validator-deposit-natural",
+      "query": "how much ETH do you need to run a validator",
+      "category": "natural",
+      "results": {
+        "keyword": {
+          "precision_at_5": 0.4,
+          "strong_at_5": 0.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Divide Systems of Ethereum to Improve Decentralization",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:12097-divide-systems-of-ethereum-to-improve-decentralization.md:66:175",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "POA transition to optimistic rollup VM",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:7983-poa-transition-to-optimistic-rollup-vm.md:60:115",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Analysis on ''Correlated Attestation Penalties''",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19244-analysis-on-correlated-attestation-penalties.md:341:375",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Insecura - my consensus for the pyrmont network",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:11833-insecura-my-consensus-for-the-pyrmont-network.md:155:179",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Against replacing transaction fees with deposits",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:940-against-replacing-transaction-fees-with-deposits.md:41:51",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 0.4,
+          "strong_at_5": 0.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Divide Systems of Ethereum to Improve Decentralization",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:12097-divide-systems-of-ethereum-to-improve-decentralization.md:66:175",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "POA transition to optimistic rollup VM",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:7983-poa-transition-to-optimistic-rollup-vm.md:60:115",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Analysis on ''Correlated Attestation Penalties''",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19244-analysis-on-correlated-attestation-penalties.md:341:375",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Insecura - my consensus for the pyrmont network",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:11833-insecura-my-consensus-for-the-pyrmont-network.md:155:179",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Against replacing transaction fees with deposits",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:940-against-replacing-transaction-fees-with-deposits.md:41:51",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 0.6,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "What are the expected computational requirements to join a validator pool?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1055-what-are-the-expected-computational-requirements-to-join-a-v.md:29:35",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Custom sweep threshold for validators",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-8148.md:606:608",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Endgame Staking Economics: A Case for Targeting",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:18751-endgame-staking-economics-a-case-for-targeting.md:465:499",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Different possible states for a Casper FFG validator",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1620-different-possible-states-for-a-casper-ffg-validator.md:114:120",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "The Multidimensional Scale of Overhead, Availability, and Validation Requirements",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20645-the-multidimensional-scale-of-overhead-availability-and-vali.md:90:100:p3",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 0.6,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "What are the expected computational requirements to join a validator pool?",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1055-what-are-the-expected-computational-requirements-to-join-a-v.md:29:35",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Custom sweep threshold for validators",
+              "source_kind": "eip",
+              "source_name": "eips",
+              "dedupe_key": "eips:eip-8148.md:606:608",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Endgame Staking Economics: A Case for Targeting",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:18751-endgame-staking-economics-a-case-for-targeting.md:465:499",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Different possible states for a Casper FFG validator",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1620-different-possible-states-for-a-casper-ffg-validator.md:114:120",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "The Multidimensional Scale of Overhead, Availability, and Validation Requirements",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20645-the-multidimensional-scale-of-overhead-availability-and-vali.md:90:100:p3",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "light-client-natural",
+      "query": "how do light clients verify the beacon chain without downloading everything",
+      "category": "natural",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.6,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Dirt Simple Withdrawal Contract",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8218-dirt-simple-withdrawal-contract.md:14:41",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Delayed state execution in practice",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1041-delayed-state-execution-in-practice.md:271:298",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Formalizing decentralization goals in the context of larger L1 gaslimits and 2020s-era tech",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:23942-formalizing-decentralization-goals-in-the-context-of-larger.md:176:189",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Node types in Ethereum 2.0",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3668-node-types-in-ethereum-2-0.md:14:35",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:62:75:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.6,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:21:29",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Open Research Questions For Phases 0 to 2",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5871-open-research-questions-for-phases-0-to-2.md:43:55",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Simple Casper light client",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:828-simple-casper-light-client.md:14:23",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "ICS-15: Ethereum beacon chain light client specification for IBC",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:14553-ics-15-ethereum-beacon-chain-light-client-specification-for.md:14:22",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Single Slot Finality",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:16700-single-slot-finality.md:14:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.6,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:21:29",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Open Research Questions For Phases 0 to 2",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5871-open-research-questions-for-phases-0-to-2.md:43:55",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Simple Casper light client",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:828-simple-casper-light-client.md:14:23",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "ICS-15: Ethereum beacon chain light client specification for IBC",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:14553-ics-15-ethereum-beacon-chain-light-client-specification-for.md:14:22",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Single Slot Finality",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:16700-single-slot-finality.md:14:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.6,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "State of block header sync in light clients",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:8047-state-of-block-header-sync-in-light-clients.md:21:29",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Open Research Questions For Phases 0 to 2",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5871-open-research-questions-for-phases-0-to-2.md:43:55",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Simple Casper light client",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:828-simple-casper-light-client.md:14:23",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "ICS-15: Ethereum beacon chain light client specification for IBC",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:14553-ics-15-ethereum-beacon-chain-light-client-specification-for.md:14:22",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Single Slot Finality",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:16700-single-slot-finality.md:14:25",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "eip-7732",
+      "query": "EIP-7732 enshrined PBS",
+      "category": "identifier",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:14:54",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:54:118",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:121:133",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:133:139",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:139:145",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:14:54",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:54:118",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:121:133",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:133:139",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732: Enshrined Proposer-Builder Separation (ePBS)",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:19634-eip-7732-enshrined-proposer-builder-separation-epbs.md:139:145",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25774-eip-7732-breakout-room-call-26-october-24-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:26959-eip-7732-breakout-room-call-29-december-19-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25596-eip-7732-breakout-room-call-25-october-10-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25955-eip-7732-breakout-room-call-27-november-7-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25200-eip-7732-breakout-room-call-22-august-29-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25774-eip-7732-breakout-room-call-26-october-24-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:26959-eip-7732-breakout-room-call-29-december-19-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25596-eip-7732-breakout-room-call-25-october-10-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25955-eip-7732-breakout-room-call-27-november-7-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7732 Breakout Room Call",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:25200-eip-7732-breakout-room-call-22-august-29-2025.md:14:17",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "eip-7702",
       "query": "EIP-7702 set EOA account code",
       "category": "identifier",
@@ -8713,6 +10903,444 @@
               "source_kind": "eip",
               "source_name": "eips",
               "dedupe_key": "eips:eip-5450.md:113:115",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bare-mev",
+      "query": "MEV",
+      "category": "edge",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "MEV mitigation protocol based on SSS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10292-mev-mitigation-protocol-based-on-sss.md:14:91",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV mitigation protocol based on SSS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10292-mev-mitigation-protocol-based-on-sss.md:94:112",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV mitigation protocol based on SSS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10292-mev-mitigation-protocol-based-on-sss.md:112:122",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV mitigation protocol based on SSS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10292-mev-mitigation-protocol-based-on-sss.md:122:141",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "MEV mitigation protocol based on SSS",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:10292-mev-mitigation-protocol-based-on-sss.md:141:147",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "The Application of ZK-SNARKs in Solidity - Privacy Transformation, Computational Optimization, and MEV Resistance",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17017-the-application-of-zk-snarks-in-solidity-privacy-transformat.md:14:43",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "The Road Towards a Distributed Encrypted Mempool on Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:21717-the-road-towards-a-distributed-encrypted-mempool-on-ethereum.md:132:194",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Open, Application-Driven FHE for Ethereum",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:23044-open-application-driven-fhe-for-ethereum.md:462:479",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Implications of Pipelined BFT on Shared Sequencers",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17495-implications-of-pipelined-bft-on-shared-sequencers.md:14:27",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Proposers do play dice: Introducing random Execution Auctions (randEAs)",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:20938-proposers-do-play-dice-introducing-random-execution-auctions.md:160:165",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 0.6,
+          "strong_at_5": 0.6,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Block reward can be replaced by miner extractable value",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:4272-block-reward-can-be-replaced-by-miner-extractable-value.md:14:35",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Block reward can be replaced by miner extractable value",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:4272-block-reward-can-be-replaced-by-miner-extractable-value.md:35:62",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7823: Set upper bounds for MODEXP",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:21798-eip-7823-set-upper-bounds-for-modexp.md:122:128",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Transport privacy exploration of the Validator-Relayer Builder API",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:21050-transport-privacy-exploration-of-the-validator-relayer-build.md:436:458:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Hypothetical maximum scale of Eth 1.x",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:2264-hypothetical-maximum-scale-of-eth-1-x.md:195:201",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 0.6,
+          "strong_at_5": 0.6,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Block reward can be replaced by miner extractable value",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:4272-block-reward-can-be-replaced-by-miner-extractable-value.md:14:35",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Block reward can be replaced by miner extractable value",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:4272-block-reward-can-be-replaced-by-miner-extractable-value.md:35:62",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "EIP-7823: Set upper bounds for MODEXP",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:21798-eip-7823-set-upper-bounds-for-modexp.md:122:128",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Transport privacy exploration of the Validator-Relayer Builder API",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:21050-transport-privacy-exploration-of-the-validator-relayer-build.md:436:458:p0",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Hypothetical maximum scale of Eth 1.x",
+              "source_kind": "forum",
+              "source_name": "magicians",
+              "dedupe_key": "magicians:2264-hypothetical-maximum-scale-of-eth-1-x.md:195:201",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bare-das",
+      "query": "DAS",
+      "category": "edge",
+      "results": {
+        "keyword": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 0.2,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "A Universal Verification Equation for Data Availability Sampling",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13240-a-universal-verification-equation-for-data-availability-samp.md:45:51",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "DAS Brainstorming Using Sparse Matrix Encoded Helix Structure",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13680-das-brainstorming-using-sparse-matrix-encoded-helix-structur.md:14:83",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "DAS Brainstorming Using Sparse Matrix Encoded Helix Structure",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13680-das-brainstorming-using-sparse-matrix-encoded-helix-structur.md:83:105",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "DAS Brainstorming Using Sparse Matrix Encoded Helix Structure",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13680-das-brainstorming-using-sparse-matrix-encoded-helix-structur.md:105:126",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "DAS Brainstorming Using Sparse Matrix Encoded Helix Structure",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13680-das-brainstorming-using-sparse-matrix-encoded-helix-structur.md:129:176",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.5": {
+          "precision_at_5": 1.0,
+          "strong_at_5": 1.0,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "A Universal Verification Equation for Data Availability Sampling",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:13240-a-universal-verification-equation-for-data-availability-samp.md:45:51",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "FullDAS: towards massive scalability with 32MB blocks and beyond",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19529-fulldas-towards-massive-scalability-with-32mb-blocks-and-bey.md:35:61",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Network Shards (concept idea)",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:17417-network-shards-concept-idea.md:56:70",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "FullDAS: towards massive scalability with 32MB blocks and beyond",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:19529-fulldas-towards-massive-scalability-with-32mb-blocks-and-bey.md:319:349",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "LossyDAS: Lossy, Incremental, and Diagonal Sampling for Data Availability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:18963-lossydas-lossy-incremental-and-diagonal-sampling-for-data-av.md:169:186",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            }
+          ]
+        },
+        "hybrid_0.7": {
+          "precision_at_5": 0.8,
+          "strong_at_5": 0.4,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Nuances of data recoverability in data availability sampling",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:16256-nuances-of-data-recoverability-in-data-availability-sampling.md:14:33",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Erasure coding (Reed-Solomon) for Plasma data availability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3560-erasure-coding-reed-solomon-for-plasma-data-availability.md:31:38",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "On-Chain Non-Interactive Data Availability Proofs",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5715-on-chain-non-interactive-data-availability-proofs.md:36:45",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Erasure coding (Reed-Solomon) for Plasma data availability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3560-erasure-coding-reed-solomon-for-plasma-data-availability.md:105:127",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Finality and Windback - Proof of Custody Revisited",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1434-finality-and-windback-proof-of-custody-revisited.md:47:53",
+              "relevant": false,
+              "strong": false,
+              "anti": false
+            }
+          ]
+        },
+        "semantic_1.0": {
+          "precision_at_5": 0.8,
+          "strong_at_5": 0.4,
+          "contamination_at_5": 0.0,
+          "source_kind_ok": true,
+          "hits": [
+            {
+              "title": "Nuances of data recoverability in data availability sampling",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:16256-nuances-of-data-recoverability-in-data-availability-sampling.md:14:33",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "Erasure coding (Reed-Solomon) for Plasma data availability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3560-erasure-coding-reed-solomon-for-plasma-data-availability.md:31:38",
+              "relevant": true,
+              "strong": true,
+              "anti": false
+            },
+            {
+              "title": "On-Chain Non-Interactive Data Availability Proofs",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:5715-on-chain-non-interactive-data-availability-proofs.md:36:45",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Erasure coding (Reed-Solomon) for Plasma data availability",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:3560-erasure-coding-reed-solomon-for-plasma-data-availability.md:105:127",
+              "relevant": true,
+              "strong": false,
+              "anti": false
+            },
+            {
+              "title": "Finality and Windback - Proof of Custody Revisited",
+              "source_kind": "forum",
+              "source_name": "ethresearch",
+              "dedupe_key": "ethresearch:1434-finality-and-windback-proof-of-custody-revisited.md:47:53",
               "relevant": false,
               "strong": false,
               "anti": false
