@@ -6,7 +6,6 @@ from pathlib import Path
 
 from erd_index.discover.language_detector import detect_language
 
-
 # ---------------------------------------------------------------------------
 # Known extensions
 # ---------------------------------------------------------------------------

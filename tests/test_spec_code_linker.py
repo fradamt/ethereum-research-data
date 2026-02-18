@@ -7,6 +7,13 @@ from pathlib import Path
 
 import pytest
 
+from erd_index.enrich.spec_code_linker import (
+    _heuristic_eip_ref_in_text,
+    _heuristic_file_path,
+    _heuristic_symbol_name,
+    find_spec_code_links,
+    find_spec_code_links_from_text,
+)
 from erd_index.graph.node_builder import chunk_to_node
 from erd_index.graph.store import (
     get_connection,
@@ -14,16 +21,8 @@ from erd_index.graph.store import (
     upsert_node,
     upsert_spec_code_link,
 )
-from erd_index.enrich.spec_code_linker import (
-    find_spec_code_links,
-    find_spec_code_links_from_text,
-    _heuristic_symbol_name,
-    _heuristic_file_path,
-    _heuristic_eip_ref_in_text,
-)
 from erd_index.models import Chunk, ChunkKind, Language, SourceKind
 from erd_index.settings import Settings
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -338,7 +337,7 @@ class TestFindSpecCodeLinks:
 
         links = find_spec_code_links(conn)
         assert len(links) >= 1
-        link = next(l for l in links if l["eip"] == 1559)
+        link = next(lk for lk in links if lk["eip"] == 1559)
         assert link["relation"] == "implements"
         assert link["confidence"] == 0.9
         assert link["match_method"] == "heuristic"
@@ -353,7 +352,7 @@ class TestFindSpecCodeLinks:
 
         links = find_spec_code_links(conn)
         assert len(links) >= 1
-        link = next(l for l in links if l["eip"] == 4844)
+        link = next(lk for lk in links if lk["eip"] == 4844)
         assert link["relation"] == "tests"
         assert link["confidence"] == 0.7
 
@@ -369,7 +368,7 @@ class TestFindSpecCodeLinks:
 
         links = find_spec_code_links(conn)
         # Should have both implements (from symbol) and tests (from path)
-        relations = {l["relation"] for l in links if l["eip"] == 1559}
+        relations = {lk["relation"] for lk in links if lk["eip"] == 1559}
         assert "implements" in relations
         assert "tests" in relations
 
@@ -381,7 +380,7 @@ class TestFindSpecCodeLinks:
 
         links = find_spec_code_links(conn)
         assert len(links) >= 1
-        link = next(l for l in links if l["eip"] == 1559)
+        link = next(lk for lk in links if lk["eip"] == 1559)
         assert link["eip_node_id"] == eip.node_id
 
     def test_no_code_nodes(self, conn):
@@ -487,7 +486,7 @@ class TestEvidenceJson:
         conn.commit()
 
         links = find_spec_code_links(conn)
-        link = next(l for l in links if l["eip"] == 1559 and l["relation"] == "implements")
+        link = next(lk for lk in links if lk["eip"] == 1559 and lk["relation"] == "implements")
         evidence = json.loads(link["evidence_json"])
         assert evidence["heuristic"] == "symbol_name"
         assert "applyEIP1559" in evidence["symbol"]
@@ -501,7 +500,7 @@ class TestEvidenceJson:
         conn.commit()
 
         links = find_spec_code_links(conn)
-        link = next(l for l in links if l["eip"] == 4844 and l["relation"] == "tests")
+        link = next(lk for lk in links if lk["eip"] == 4844 and lk["relation"] == "tests")
         evidence = json.loads(link["evidence_json"])
         assert evidence["heuristic"] == "test_file_path"
         assert "eip4844" in evidence["file_path"]

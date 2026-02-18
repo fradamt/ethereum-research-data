@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from erd_index.index.document_builder import chunk_to_document, chunks_to_documents, sanitize_chunk_id
+from erd_index.index.document_builder import (
+    chunk_to_document,
+    chunks_to_documents,
+    sanitize_chunk_id,
+)
 from erd_index.models import Chunk, ChunkKind, Language, SourceKind
-
 
 SCHEMA_VERSION = 1
 
@@ -101,7 +104,7 @@ class TestForumDocument:
         # Meilisearch IDs are sanitized (: -> -, / -> _)
         expected_id = chunk.chunk_id.replace(":", "-").replace("/", "_").replace(".", "_")
         assert doc["id"] == expected_id
-        assert doc["doc_id"] == f"forum:ethresearch:1234"
+        assert doc["doc_id"] == "forum:ethresearch:1234"
         assert doc["schema_version"] == SCHEMA_VERSION
         assert doc["source_kind"] == "forum"
         assert doc["chunk_kind"] == "md_heading"

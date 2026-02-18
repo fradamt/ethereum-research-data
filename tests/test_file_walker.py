@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import pytest
-
 from erd_index.discover.file_walker import (
     DiscoveredFile,
     _is_excluded,
@@ -15,7 +13,6 @@ from erd_index.discover.file_walker import (
     walk_sources,
 )
 from erd_index.settings import ChunkSizing, CodeRepo, CorpusSource, MeilisearchConfig, Settings
-
 
 # ---------------------------------------------------------------------------
 # Helpers

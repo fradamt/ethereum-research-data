@@ -9,7 +9,6 @@ from erd_index.enrich.dependency_extractor import extract_dependencies
 from erd_index.enrich.forum_metadata import enrich_forum_chunk
 from erd_index.models import Chunk, ChunkKind, Language, SourceKind
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

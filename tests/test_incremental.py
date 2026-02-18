@@ -18,7 +18,6 @@ from erd_index.state.manifest_db import (
 )
 from erd_index.state.run_log import finish_run, get_recent_runs, start_run
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

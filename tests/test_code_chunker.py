@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from erd_index.chunk.code_chunker import chunk_code_units
 from erd_index.chunk.group_small_units import group_small_units, is_small
 from erd_index.chunk.split_large_units import split_large_unit
@@ -303,7 +301,7 @@ class TestMixedSizeChunking:
         while len("\n".join(large_lines)) < 6000:
             i = len(large_lines)
             large_lines.append(f"    result_{i} = compute({i})")
-        large_text = f'def huge():\n    """Big function."""\n' + "\n".join(large_lines)
+        large_text = 'def huge():\n    """Big function."""\n' + "\n".join(large_lines)
 
         units = [
             _make_unit("tiny", small_text, start_line=1),

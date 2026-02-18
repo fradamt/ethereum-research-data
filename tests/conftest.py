@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from erd_index.settings import Settings, ChunkSizing, MeilisearchConfig
+from erd_index.settings import ChunkSizing, MeilisearchConfig, Settings
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

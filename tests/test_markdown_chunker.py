@@ -170,7 +170,7 @@ class TestCodeFencePreservation:
     def test_code_block_text_preserved_in_section(self):
         text = (FIXTURES_DIR / "heading_with_code_fence.md").read_text()
         units = parse_markdown(text, path="test.md", source_name="eips")
-        sec1 = [u for u in units if u.heading_path == ["Section One"]][0]
+        sec1 = next(u for u in units if u.heading_path == ["Section One"])
         assert "def process():" in sec1.text
         assert '```' in sec1.text
 
@@ -432,7 +432,7 @@ class TestChunkComputedFields:
         units = parse_markdown(text, path="eip-9999.md", source_name="eips")
         chunks1 = chunk_parsed_units(units, _default_sizing())
         chunks2 = chunk_parsed_units(units, _default_sizing())
-        for c1, c2 in zip(chunks1, chunks2):
+        for c1, c2 in zip(chunks1, chunks2, strict=False):
             assert c1.chunk_id == c2.chunk_id
 
     def test_content_hash_changes_with_text(self):

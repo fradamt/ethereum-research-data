@@ -193,8 +193,6 @@ def _visibility_from_node(node) -> str:
 def _signature(node, source_bytes: bytes) -> str:
     """Extract the signature (everything before the body block)."""
     text = node.text.decode("utf-8")
-    # Find the opening brace.
-    brace_depth = 0
     for i, ch in enumerate(text):
         if ch == "{":
             return text[:i].rstrip()

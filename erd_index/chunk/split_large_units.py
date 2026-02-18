@@ -160,7 +160,7 @@ def _split_by_line_windows(
     target = sizing.target_chars
 
     # Estimate lines per window.
-    avg_line_len = max(1, sum(len(l) for l in body_lines) // max(1, len(body_lines)))
+    avg_line_len = max(1, sum(len(line) for line in body_lines) // max(1, len(body_lines)))
     lines_per_window = max(10, (target - header_len) // max(1, avg_line_len))
 
     parts: list[tuple[str, int, int]] = []

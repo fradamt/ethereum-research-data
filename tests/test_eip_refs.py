@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from erd_index.enrich.eip_refs import extract_eip_refs
 
-
 # ---------------------------------------------------------------------------
 # Basic patterns
 # ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ _EIP_PATTERN = re.compile(
     r"""
     (?<![/\w])          # not preceded by / or word char (avoids mid-URL matches)
     (?:EIP|ERC|eip|erc) # keyword
-    [-–— \t]*           # optional separator: hyphen, dash, or whitespace
+    [-\u2013\u2014 \t]*  # optional separator: hyphen, en-dash, em-dash, whitespace  # noqa: RUF001
     (\d{1,6})           # EIP number (1-6 digits)
     (?!\d)              # not followed by more digits
     """,

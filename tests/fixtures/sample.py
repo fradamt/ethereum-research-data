@@ -1,7 +1,7 @@
 """Sample Python module for testing tree-sitter parser."""
 
-import os
-from pathlib import Path
+import os  # noqa: F401 — intentional test data for parser import extraction
+from pathlib import Path  # noqa: F401
 
 
 def simple_function(x: int) -> int:

@@ -17,17 +17,17 @@ if TYPE_CHECKING:
     from erd_index.settings import Settings
 
 __all__ = [
-    "init_graph_db",
-    "get_connection",
-    "upsert_node",
-    "upsert_eip_dep",
-    "upsert_spec_code_link",
-    "upsert_cross_ref",
-    "upsert_code_dep",
     "delete_nodes_by_file",
-    "get_neighbors",
+    "get_connection",
     "get_eip_context",
+    "get_neighbors",
     "get_stats",
+    "init_graph_db",
+    "upsert_code_dep",
+    "upsert_cross_ref",
+    "upsert_eip_dep",
+    "upsert_node",
+    "upsert_spec_code_link",
 ]
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
@@ -567,7 +567,7 @@ def get_stats(
             "code_dependency_edge",
         ]
         for table in tables:
-            row = conn.execute(f"SELECT COUNT(*) AS cnt FROM {table}").fetchone()  # noqa: S608
+            row = conn.execute(f"SELECT COUNT(*) AS cnt FROM {table}").fetchone()
             counts[table] = row["cnt"]
 
     # Node type breakdown

@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 from erd_index.models import Language, SourceKind
-from erd_index.parse.py_parser import parse_python_file
 from erd_index.parse.go_parser import parse_go_file
+from erd_index.parse.py_parser import parse_python_file
 from erd_index.parse.rust_parser import parse_rust_file
 
 FIXTURES = Path(__file__).parent / "fixtures"

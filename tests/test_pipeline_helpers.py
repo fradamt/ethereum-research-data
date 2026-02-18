@@ -13,11 +13,9 @@ import pytest
 
 from erd_index.pipeline import _stale_chunk_ids
 from erd_index.state.manifest_db import (
-    get_indexed_file,
     init_state_db,
     upsert_indexed_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

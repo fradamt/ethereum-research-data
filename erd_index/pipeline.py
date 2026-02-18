@@ -501,9 +501,20 @@ def _cleanup_stale_code(
 ) -> int:
     """Delete stale chunks for code files that no longer exist on disk.
 
+    Also handles repos removed from config — any code repo in the manifest
+    that is not in *paths_by_repo* gets cleaned up with an empty path set.
+
     Returns the total number of chunk IDs deleted.
     """
     total_deleted = 0
+
+    # Include removed repos: manifest repos that are code repos but no longer in config
+    all_repos = get_all_repositories(state_db)
+    corpus_names = {cs.name for cs in settings.corpus_sources}
+    for repo in all_repos:
+        if repo not in paths_by_repo and repo not in corpus_names and repo:
+            paths_by_repo[repo] = set()  # triggers full stale cleanup
+
     for repo_name, current_paths in paths_by_repo.items():
         stale_rows = get_stale_files(state_db, repo_name, current_paths)
         for row in stale_rows:

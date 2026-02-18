@@ -8,7 +8,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-__all__ = ["start_run", "finish_run", "get_recent_runs"]
+__all__ = ["finish_run", "get_recent_runs", "start_run"]
 
 log = logging.getLogger(__name__)
 

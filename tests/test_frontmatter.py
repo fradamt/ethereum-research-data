@@ -6,7 +6,6 @@ import logging
 
 from erd_index.parse.frontmatter import extract_frontmatter
 
-
 # ---------------------------------------------------------------------------
 # Valid frontmatter
 # ---------------------------------------------------------------------------
@@ -27,24 +26,24 @@ class TestValidFrontmatter:
 
     def test_numeric_values(self):
         text = "---\neip: 1559\nviews: 42\nscore: 0.95\n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm["eip"] == 1559
         assert fm["views"] == 42
         assert fm["score"] == 0.95
 
     def test_list_values(self):
         text = "---\ntags: [a, b, c]\n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm["tags"] == ["a", "b", "c"]
 
     def test_nested_dict(self):
         text = "---\nmeta:\n  key1: val1\n  key2: val2\n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm["meta"] == {"key1": "val1", "key2": "val2"}
 
     def test_quoted_string_values(self):
         text = '---\ntitle: "Hello: World"\ndate: "2024-01-01"\n---\nBody'
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm["title"] == "Hello: World"
         assert fm["date"] == "2024-01-01"
 
@@ -69,7 +68,7 @@ class TestValidFrontmatter:
         if not path.exists():
             return
         text = path.read_text()
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm["eip"] == 1559
         assert fm["status"] == "Final"
         assert "requires" in fm
@@ -122,12 +121,12 @@ class TestMalformedYaml:
     def test_yaml_is_scalar_not_dict(self):
         """If the YAML block parses to a non-dict (e.g. a string), return empty."""
         text = "---\njust a string\n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm == {}
 
     def test_yaml_is_list_not_dict(self):
         text = "---\n- item1\n- item2\n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm == {}
 
 
@@ -139,13 +138,13 @@ class TestMalformedYaml:
 class TestEmptyFrontmatter:
     def test_empty_yaml_block(self):
         text = "---\n\n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         # yaml.safe_load("") returns None, which is not a dict.
         assert fm == {}
 
     def test_whitespace_only_yaml(self):
         text = "---\n   \n---\nBody"
-        fm, body = extract_frontmatter(text)
+        fm, _body = extract_frontmatter(text)
         assert fm == {}
 
 

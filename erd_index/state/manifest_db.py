@@ -15,13 +15,13 @@ from typing import Any
 from erd_index.settings import Settings
 
 __all__ = [
-    "init_state_db",
-    "get_indexed_file",
-    "is_file_changed",
-    "upsert_indexed_file",
-    "remove_indexed_file",
-    "get_stale_files",
     "compute_file_hash",
+    "get_indexed_file",
+    "get_stale_files",
+    "init_state_db",
+    "is_file_changed",
+    "remove_indexed_file",
+    "upsert_indexed_file",
 ]
 
 log = logging.getLogger(__name__)

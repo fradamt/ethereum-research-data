@@ -25,7 +25,6 @@ from erd_index.graph.store import (
 from erd_index.models import Chunk, ChunkKind, Language, SourceKind
 from erd_index.settings import Settings
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

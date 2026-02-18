@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import fnmatch
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 
 from erd_index.discover.language_detector import detect_language
 from erd_index.settings import CodeRepo, CorpusSource, Settings

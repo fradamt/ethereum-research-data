@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 _SCHEMA_VERSION_KEY = "_erd_schema_version"
 
 # Cached client instance — avoids re-creating and health-checking per batch.
+# Not thread-safe; acceptable for the single-threaded CLI pipeline.
 _cached_client: meilisearch.Client | None = None
 _cached_url: str | None = None
 
