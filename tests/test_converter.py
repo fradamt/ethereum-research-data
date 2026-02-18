@@ -270,7 +270,8 @@ class TestHtmlToMarkdown:
 
     def test_hr(self) -> None:
         result = html_to_markdown("<p>before</p><hr/><p>after</p>")
-        assert "---" in result
+        # Uses *** (not ---) to avoid conflict with reply separators
+        assert "***" in result
 
     def test_br_becomes_newline(self) -> None:
         result = html_to_markdown("line1<br/>line2")

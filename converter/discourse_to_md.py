@@ -218,8 +218,9 @@ def html_to_markdown(h: str) -> str:
     # Tables
     text = _convert_tables(text)
 
-    # Horizontal rules
-    text = re.sub(r"<hr\s*/?>", "\n\n---\n\n", text)
+    # Horizontal rules — use *** instead of --- to avoid conflict with
+    # the --- reply separator used by the converter/parser.
+    text = re.sub(r"<hr\s*/?>", "\n\n***\n\n", text)
 
     # --- Lists ---
     text = _convert_lists(text)
@@ -636,7 +637,9 @@ class DiscourseConverter:
 
         # Replies
         reply_posts = posts[1: 1 + self.max_replies]
+        rendered_replies = 0
         if reply_posts:
+            replies_start = len(lines)
             lines.append("")
             lines.append("## Replies")
 
@@ -646,6 +649,7 @@ class DiscourseConverter:
                 post_body = html_to_markdown(post.get("cooked", ""))
                 if not post_body:
                     continue
+                rendered_replies += 1
                 lines.append("")
                 lines.append(f"**{username}** ({post_date}):")
                 lines.append("")
@@ -657,7 +661,11 @@ class DiscourseConverter:
             if lines and lines[-1] == "---":
                 lines.pop()
 
-        remaining = len(posts) - 1 - self.max_replies
+            # Remove orphaned ## Replies header if no replies were rendered
+            if rendered_replies == 0:
+                del lines[replies_start:]
+
+        remaining = len(posts) - 1 - rendered_replies
         if remaining > 0:
             lines.append("")
             lines.append(f"*({remaining} more replies not shown)*")
