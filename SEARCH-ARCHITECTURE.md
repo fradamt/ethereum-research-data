@@ -18,6 +18,7 @@ ideas to a simpler, local-first stack.
 4. [SQLite Graph Schema](#4-sqlite-graph-schema)
 5. [Lessons from eth-protocol-expert](#5-lessons-from-eth-protocol-expert)
 6. [Architecture Recommendations](#6-architecture-recommendations)
+7. [Embedding Proxy](#7-embedding-proxy)
 
 ---
 
@@ -665,3 +666,133 @@ enrich/ (eip_refs.py, forum_metadata.py, code_metadata.py, dependency_extractor.
   from source files via `--full-rebuild`.
 - The MCP server is a long-running process configured in `~/.mcp.json`.
 - For CI: use `--dry-run` to validate chunking without writing to Meili.
+
+---
+
+## 7. Embedding Proxy
+
+### 7.1 Why the proxy exists
+
+Meilisearch v1.35 introduced two bugs that break direct Ollama embedding:
+
+1. **SSRF protection blocks localhost.** Meilisearch's new network security
+   layer blocks requests to `127.0.0.1` and `::1` by default, preventing it
+   from reaching a local Ollama instance. Workaround: launch Meilisearch with
+   `--experimental-allowed-ip-networks any`.
+
+2. **`documentTemplateMaxBytes` is ignored.** The setting is supposed to
+   truncate rendered document templates before sending them to the embedder,
+   but it has no effect for either the `ollama` or `rest` source types.
+   Documents up to 138k characters are sent verbatim to the embedding model,
+   which silently truncates or fails.
+   See: [meilisearch/meilisearch#6152](https://github.com/meilisearch/meilisearch/issues/6152)
+
+Because `nomic-embed-text` has an 8192-token context window (~4000-8200
+characters depending on content density), oversized inputs lose most of their
+content. The proxy solves this by splitting long texts into sub-chunks,
+embedding each one, and averaging the vectors.
+
+### 7.2 Request flow
+
+```
+Meilisearch ──POST /api/embed──> Embed Proxy (:11435)
+                                      │
+                                      ├── split long inputs (paragraph boundaries, max 4000 chars)
+                                      ├── group sub-chunks into batches of 10
+                                      ├── POST each batch to Ollama concurrently (thread pool)
+                                      │         │
+                                      │         v
+                                      │     Ollama (:11434)
+                                      │     nomic-embed-text
+                                      │
+                                      ├── average sub-chunk embeddings per original input
+                                      └── return single embedding per input
+```
+
+Meilisearch is configured with `url: http://localhost:11435/api/embed`
+(the proxy) instead of Ollama's port 11434 directly.
+
+### 7.3 Design constraints
+
+- **Per-input resilience.** Each input is embedded independently. If
+  embedding fails for an individual input after retries, the proxy logs
+  the failure at WARNING level and returns a zero vector for that input.
+  This prevents one bad document from aborting the entire Meilisearch
+  embedding batch.
+- **Concurrency.** A `ThreadPoolExecutor` (default 4 workers) keeps total
+  latency under Meilisearch's ~30s per-batch timeout, even for documents
+  that split into 30+ sub-chunks.
+- **Retries with back-off.** Transient Ollama errors (502, 503, 504, 408)
+  and connection failures are retried 3 times with exponential back-off
+  (0.5s, 1s, 2s).
+
+### 7.4 Module and CLI
+
+The proxy lives at `erd_index/embed_proxy.py` and is installed as the
+`erd-embed-proxy` CLI entry point.
+
+```bash
+# Run with defaults (port 11435, max 4000 chars/chunk)
+uv run erd-embed-proxy
+
+# Custom configuration
+uv run erd-embed-proxy --port 11435 --max-chars 4000 --batch-size 10 --workers 4 -v
+```
+
+Configuration precedence: CLI flags > environment variables > built-in defaults.
+
+| Env var | Default | Description |
+|---------|---------|-------------|
+| `ERD_PROXY_PORT` | 11435 | Listen port |
+| `ERD_PROXY_MAX_CHARS` | 4000 | Max characters per sub-chunk |
+| `ERD_PROXY_OLLAMA_URL` | `http://localhost:11434/api/embed` | Ollama endpoint |
+| `ERD_PROXY_OLLAMA_BATCH_SIZE` | 10 | Sub-chunks per Ollama request |
+| `ERD_PROXY_WORKERS` | 4 | Thread pool size |
+| `ERD_PROXY_RETRY_COUNT` | 3 | Retries per failed request |
+
+### 7.5 Launchd service
+
+The proxy runs as a launchd service alongside Meilisearch and Ollama.
+
+```bash
+# Install the service
+cp config/com.erd.embed-proxy.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.erd.embed-proxy.plist
+
+# Check status
+launchctl list | grep erd
+
+# View logs
+tail -f ~/.cache/erd-embed-proxy.log
+```
+
+The plist uses `KeepAlive: true` and `RunAtLoad: true` so the proxy starts
+automatically on login and restarts if it crashes.
+
+### 7.6 Related services
+
+| Service | Port | Plist | Log |
+|---------|------|-------|-----|
+| Meilisearch | 7700 | `com.meilisearch.plist` | `~/.cache/meilisearch.log` |
+| Ollama | 11434 | (managed by Ollama.app) | |
+| Embed Proxy | 11435 | `com.erd.embed-proxy.plist` | `~/.cache/erd-embed-proxy.log` |
+
+### 7.7 Failure handling and recovery
+
+- **Zero-vector fallback.** If embedding fails for an individual input
+  after all retries are exhausted, the proxy returns a zero vector
+  (all-zeros, same dimensionality as the model output). The document is
+  still indexed but will not appear in semantic search results until
+  re-embedded.
+- **WARNING-level logging.** Each failed input is logged at WARNING level
+  with: the input character count, the number of sub-chunks it was split
+  into, the error message, and a 120-character preview of the failed text.
+- **Stats tracking.** The proxy tracks `total`, `split`, `sub_chunks`, and
+  `failed` counts. Stats are logged every 500 inputs and at shutdown.
+- **Finding degraded documents.** Grep for `WARNING` in the proxy log
+  (`~/.cache/erd-embed-proxy.log`) to identify documents that received
+  zero-vector embeddings.
+- **Recovery.** Once the underlying issue is resolved (e.g. Ollama back
+  online, model reloaded), re-index the affected documents through the
+  normal ingestion pipeline. Meilisearch will request fresh embeddings
+  from the proxy, replacing the zero vectors.

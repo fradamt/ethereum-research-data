@@ -39,6 +39,9 @@ ethereum-research-data/
 │   ├── setup_qmd.sh            # Create QMD collections pointing at corpus/
 │   └── curate_eips.py          # Copy all EIPs from an EIPs repo
 │
+├── erd_index/                  # Meilisearch indexing pipeline (uv-managed)
+│   ├── embed_proxy.py          # Splitting embed proxy (Meilisearch → Ollama)
+│
 ├── raw/                        # Scraped JSON (gitignored — regeneratable)
 │   ├── ethresearch/
 │   │   ├── index.json
