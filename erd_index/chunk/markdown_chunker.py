@@ -149,14 +149,14 @@ def _split_large(
 
     for i, part_text in enumerate(parts):
         part_lines = max(1, int(total_lines * len(part_text) / total_chars))
-        start_line = line_offset
-        end_line = line_offset + part_lines - 1
+        start_line = min(line_offset, unit.end_line)
+        end_line = min(line_offset + part_lines - 1, unit.end_line)
         line_offset = end_line + 1
 
         chunk = _unit_to_chunk(unit)
         chunk.text = part_text
         chunk.start_line = start_line
-        chunk.end_line = min(end_line, unit.end_line)
+        chunk.end_line = end_line
         if total > 1:
             chunk.part_index = i
             chunk.part_count = total

@@ -249,7 +249,10 @@ def _split_replies(
         inner = re.sub(r"^---\s*\n?", "", chunk)
         if inner.strip():
             author = _reply_author(inner)
-            chunks.append((author, inner.strip(), offset + start, offset + end))
+            # Advance start past the --- separator so start_line points
+            # to actual reply content, not the separator itself.
+            content_start = start + (len(chunk) - len(inner))
+            chunks.append((author, inner.strip(), offset + content_start, offset + end))
 
     return chunks
 

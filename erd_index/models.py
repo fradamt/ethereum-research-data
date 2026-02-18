@@ -167,7 +167,11 @@ class Chunk(BaseModel):
     def doc_id(self) -> str:
         """Parent document identifier."""
         if self.source_kind == SourceKind.FORUM:
-            return f"forum:{self.source_name}:{self.topic_id}"
+            if self.topic_id is not None:
+                return f"forum:{self.source_name}:{self.topic_id}"
+            # Non-forum corpus sources classified as FORUM lack topic_id;
+            # fall back to path-based doc_id to avoid collisions.
+            return f"doc:{self.source_name}:{self.path}"
         if self.source_kind == SourceKind.EIP:
             return f"eip:{self.eip}" if self.eip is not None else f"eip:unknown:{self.path}"
         return f"code:{self.repository}:{self.path}"

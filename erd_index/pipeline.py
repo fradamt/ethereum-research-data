@@ -102,6 +102,7 @@ def ingest_markdown(
     files_skipped = 0
     total_chunks_upserted = 0
     errors = 0
+    consecutive_errors = 0
     error_details: list[str] = []
 
     # 5. Process each file
@@ -166,17 +167,19 @@ def ingest_markdown(
                 files_processed += 1
 
             files_parsed += 1
+            consecutive_errors = 0
 
         except ConnectionError:
             raise  # Meilisearch down — abort entire run
         except Exception:
             errors += 1
+            consecutive_errors += 1
             msg = f"{discovered.source_name}:{discovered.relative_path}"
             error_details.append(msg)
             log.exception("Error processing %s", msg)
-            if errors >= 10 and files_parsed == 0:
+            if consecutive_errors >= 10:
                 raise RuntimeError(
-                    f"Aborting: {errors} consecutive errors with 0 successes. "
+                    f"Aborting: {consecutive_errors} consecutive errors. "
                     "Check log output for details."
                 ) from None
 
@@ -380,6 +383,7 @@ def ingest_code(
     files_skipped = 0
     total_chunks_upserted = 0
     errors = 0
+    consecutive_errors = 0
     error_details: list[str] = []
 
     # 5. Process each file
@@ -433,17 +437,19 @@ def ingest_code(
                 files_processed += 1
 
             files_parsed += 1
+            consecutive_errors = 0
 
         except ConnectionError:
             raise  # Meilisearch down — abort entire run
         except Exception:
             errors += 1
+            consecutive_errors += 1
             msg = f"{discovered.source_name}:{discovered.relative_path}"
             error_details.append(msg)
             log.exception("Error processing %s", msg)
-            if errors >= 10 and files_parsed == 0:
+            if consecutive_errors >= 10:
                 raise RuntimeError(
-                    f"Aborting: {errors} consecutive errors with 0 successes. "
+                    f"Aborting: {consecutive_errors} consecutive errors. "
                     "Check log output for details."
                 ) from None
 

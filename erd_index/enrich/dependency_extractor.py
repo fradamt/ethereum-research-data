@@ -34,6 +34,20 @@ def _parse_python_imports(text: str) -> list[tuple[str, str]]:
     """Return (module_path, imported_name) pairs for Python imports."""
     pairs: list[tuple[str, str]] = []
 
+    # Collapse multi-line parenthesized imports to single lines so the
+    # single-line regex can match them.  e.g.:
+    #   from foo import (
+    #       Bar,
+    #       Baz,
+    #   )
+    # becomes: from foo import (Bar, Baz,)
+    text = re.sub(
+        r"\(\s*\n(.*?)\)",
+        lambda m: "(" + m.group(1).replace("\n", " ") + ")",
+        text,
+        flags=re.DOTALL,
+    )
+
     for m in _PY_FROM_IMPORT.finditer(text):
         module = m.group(1)
         names_part = m.group(2).split("#")[0]  # strip inline comments
@@ -141,9 +155,17 @@ def extract_dependencies(chunk: Chunk) -> list[tuple[str, str, str]]:
     """
     lang = chunk.language.value if hasattr(chunk.language, "value") else str(chunk.language)
 
-    # Determine the source for import parsing: the chunk's imports list if
-    # populated, otherwise fall back to the chunk text itself.
-    import_text = "\n".join(chunk.imports) if chunk.imports else chunk.text
+    # Use the chunk's imports list for parsing.  For Go, falling back to
+    # chunk.text is unsafe because the Go import regex matches any double-
+    # quoted string (including string literals in function bodies).
+    if chunk.imports:
+        import_text = "\n".join(chunk.imports)
+    elif lang == "go":
+        # Go: don't fall back to chunk.text — string literals create false
+        # matches.  Return no deps if imports weren't captured.
+        return []
+    else:
+        import_text = chunk.text
 
     if lang == "python":
         import_pairs = _parse_python_imports(import_text)
