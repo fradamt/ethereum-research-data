@@ -42,8 +42,8 @@ def _parse_python_imports(text: str) -> list[tuple[str, str]]:
     #   )
     # becomes: from foo import (Bar, Baz,)
     text = re.sub(
-        r"\(\s*\n(.*?)\)",
-        lambda m: "(" + m.group(1).replace("\n", " ") + ")",
+        r"(from\s+[\w.]+\s+import\s*)\(\s*\n(.*?)\)",
+        lambda m: m.group(1) + "(" + m.group(2).replace("\n", " ") + ")",
         text,
         flags=re.DOTALL,
     )

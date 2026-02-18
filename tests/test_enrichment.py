@@ -323,6 +323,21 @@ class TestDependencyPython:
         deps = extract_dependencies(c)
         assert deps[0][0] == "src/mod.py:f"
 
+    def test_multiline_parenthesized_import(self):
+        """Multi-line parenthesized imports are collapsed and all names extracted."""
+        c = _code_chunk(
+            language=Language.PYTHON,
+            text="def f():\n    x = Uint256(1)\n    y = Address(b'')\n",
+            symbol_qualname="mod.f",
+            imports=[
+                "from ethereum.base_types import (\n    Uint256,\n    Address,\n)",
+            ],
+        )
+        deps = extract_dependencies(c)
+        targets = {d[1] for d in deps}
+        assert "ethereum.base_types.Uint256" in targets
+        assert "ethereum.base_types.Address" in targets
+
 
 class TestDependencyGo:
     def test_go_import_used(self):
@@ -359,6 +374,18 @@ class TestDependencyGo:
         deps = extract_dependencies(c)
         targets = {d[1] for d in deps}
         assert "math/big" in targets
+
+    def test_go_empty_imports_no_false_deps(self):
+        """Go chunk with imports=[] returns no deps even when text has double-quoted strings."""
+        c = _code_chunk(
+            language=Language.GO,
+            text='func run() {\n\tfmt.Println("github.com/ethereum/go-ethereum/common")\n}\n',
+            symbol_qualname="vm.run",
+            imports=[],
+            path="vm.go",
+        )
+        deps = extract_dependencies(c)
+        assert deps == []
 
 
 class TestDependencyRust:

@@ -445,7 +445,10 @@ class DiscourseScraper:
         Skips topics whose on-disk JSON already has at least as many posts
         as the index reports.  Re-fetches topics that gained new replies.
         """
-        topic_ids = sorted(index, key=lambda x: int(x))
+        topic_ids = sorted(
+            (k for k in index if not k.startswith("_")),
+            key=lambda x: int(x),
+        )
         total = len(topic_ids)
         skipped = fetched = failed = 0
 

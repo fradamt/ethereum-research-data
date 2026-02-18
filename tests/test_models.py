@@ -193,6 +193,22 @@ class TestDocId:
         chunk = _code_chunk(repository="", path="main.go")
         assert chunk.doc_id == "code::main.go"
 
+    def test_forum_doc_id_no_topic_id(self) -> None:
+        """FORUM chunk with topic_id=None falls back to path-based doc_id."""
+        chunk = Chunk(
+            source_kind=SourceKind.FORUM,
+            chunk_kind=ChunkKind.MD_HEADING,
+            source_name="annotated-spec",
+            language=Language.MARKDOWN,
+            path="phase0/beacon-chain.md",
+            text="test",
+            start_line=1,
+            end_line=1,
+            topic_id=None,
+        )
+        assert chunk.doc_id == "doc:annotated-spec:phase0/beacon-chain.md"
+        assert not chunk.doc_id.startswith("forum:")
+
 
 # ===================================================================
 # chunk_id

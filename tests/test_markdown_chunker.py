@@ -354,6 +354,30 @@ class TestLargeSectionSplitting:
         spec_chunks = [c for c in chunks if "Specification" in c.heading_path]
         assert len(spec_chunks) >= 3  # ~10k / ~2800 target = ~4 parts
 
+    def test_start_line_lte_end_line_invariant(self):
+        """Splitting a unit with a narrow line range preserves start_line <= end_line."""
+        # Create a unit with narrow line range but lots of text to force many splits
+        paragraphs = [f"Paragraph number {i}. " * 20 for i in range(30)]
+        big_text = "\n\n".join(paragraphs)
+        unit = ParsedUnit(
+            source_kind=SourceKind.EIP,
+            language=Language.MARKDOWN,
+            source_name="eips",
+            path="test.md",
+            text=big_text,
+            start_line=1,
+            end_line=5,
+            heading_path=["Large Section"],
+        )
+        sizing = ChunkSizing(target_chars=500, hard_max_chars=1000)
+        chunks = chunk_parsed_units([unit], sizing)
+        assert len(chunks) > 1, "Expected multiple chunks from a large text"
+        for c in chunks:
+            assert c.start_line <= c.end_line, (
+                f"start_line ({c.start_line}) > end_line ({c.end_line}) "
+                f"for part {c.part_index}"
+            )
+
     def test_empty_input(self):
         chunks = chunk_parsed_units([], _default_sizing())
         assert chunks == []

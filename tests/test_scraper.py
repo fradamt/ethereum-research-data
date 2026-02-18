@@ -375,6 +375,134 @@ class TestFetchTopics:
 
         mock_fetch.assert_called_once_with(42)
 
+    def test_refetch_when_posts_count_decreases(self, tmp_path: Path) -> None:
+        """Topic with fewer posts on disk than index (moderator deletion) is re-fetched."""
+        scraper = _make_scraper(tmp_path)
+
+        # On-disk topic has 5 posts
+        existing_topic = {
+            "id": 42,
+            "post_stream": {
+                "stream": [1, 2, 3, 4, 5],
+                "posts": [{"id": i} for i in range(1, 6)],
+            },
+        }
+        (scraper.topics_dir / "42.json").write_text(json.dumps(existing_topic))
+
+        # Index says 3 posts (moderator deleted 2)
+        index = {"42": {"id": 42, "posts_count": 3}}
+
+        updated = {
+            "id": 42,
+            "post_stream": {
+                "stream": [1, 2, 3],
+                "posts": [{"id": i} for i in range(1, 4)],
+            },
+        }
+
+        with (
+            patch.object(scraper, "_fetch_full_topic", return_value=updated) as mock_fetch,
+            patch.object(scraper, "_throttle"),
+        ):
+            scraper.fetch_topics(index)
+
+        # existing_posts=5 != index_posts=3, so the == comparison detects mismatch
+        mock_fetch.assert_called_once_with(42)
+
+    def test_build_complete_key_filtered_from_topic_ids(self, tmp_path: Path) -> None:
+        """Index with _build_complete key does not crash fetch_topics."""
+        scraper = _make_scraper(tmp_path)
+
+        index = {
+            "_build_complete": True,
+            "42": {"id": 42, "posts_count": 1},
+        }
+
+        fetched = {
+            "id": 42,
+            "post_stream": {
+                "stream": [1],
+                "posts": [{"id": 1}],
+            },
+        }
+
+        with (
+            patch.object(scraper, "_fetch_full_topic", return_value=fetched) as mock_fetch,
+            patch.object(scraper, "_throttle"),
+        ):
+            # Should not raise ValueError when sorting topic IDs
+            scraper.fetch_topics(index)
+
+        mock_fetch.assert_called_once_with(42)
+
+
+# ---------------------------------------------------------------------------
+# _build_complete marker and _resume_build
+# ---------------------------------------------------------------------------
+
+
+class TestBuildComplete:
+    def test_missing_build_complete_triggers_resume(self, tmp_path: Path) -> None:
+        """An index.json WITHOUT _build_complete triggers _resume_build."""
+        scraper = _make_scraper(tmp_path)
+
+        # Write an index without _build_complete (simulates interrupted initial build)
+        index_data = {
+            "1": _make_topic_meta(1, posts_count=3),
+        }
+        _write_index(scraper, index_data)
+
+        categories = [{"id": 1, "slug": "general", "name": "General", "topic_count": 0}]
+
+        with (
+            patch.object(scraper, "_resume_build", return_value=index_data) as mock_resume,
+        ):
+            scraper.build_index(categories)
+
+        mock_resume.assert_called_once()
+
+    def test_build_complete_takes_incremental_path(self, tmp_path: Path) -> None:
+        """An index.json WITH _build_complete: true takes the incremental update path."""
+        scraper = _make_scraper(tmp_path)
+
+        # Write an index WITH _build_complete
+        index_data = {
+            "1": _make_topic_meta(1, posts_count=3),
+            "_build_complete": True,
+        }
+        _write_index(scraper, index_data)
+
+        with (
+            patch.object(scraper, "_resume_build") as mock_resume,
+            patch.object(
+                scraper, "_update_index_from_latest",
+                return_value={"1": _make_topic_meta(1, posts_count=3)},
+            ),
+        ):
+            scraper.build_index([])
+
+        mock_resume.assert_not_called()
+
+    def test_resume_sets_build_complete(self, tmp_path: Path) -> None:
+        """After _resume_build completes, the saved index.json has _build_complete: true."""
+        scraper = _make_scraper(tmp_path)
+        dest = scraper.raw_dir / "index.json"
+
+        index_data = {
+            "1": _make_topic_meta(1, posts_count=3),
+        }
+
+        categories = [{"id": 1, "slug": "general", "name": "General", "topic_count": 0}]
+
+        with (
+            patch.object(scraper, "_fetch_json", return_value={"topic_list": {"topics": []}}),
+            patch.object(scraper, "_throttle"),
+        ):
+            scraper._resume_build(dest, index_data, categories)
+
+        saved = json.loads(dest.read_text())
+        assert saved.get("_build_complete") is True
+
 
 # ---------------------------------------------------------------------------
 # _fetch_full_topic: pagination handling
