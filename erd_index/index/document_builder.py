@@ -2,13 +2,28 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from erd_index.models import Chunk
 
-__all__ = ["chunk_to_document", "chunks_to_documents", "sanitize_chunk_id"]
+__all__ = ["chunk_to_document", "chunks_to_documents", "sanitize_chunk_id", "sanitize_text"]
+
+# Matches C0 control characters except tab (0x09), newline (0x0A), and
+# carriage return (0x0D).  These cause Meilisearch's JSON parser to reject
+# the entire payload with "control character (\u0000-\u001F) found".
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def sanitize_text(text: str) -> str:
+    """Strip C0 control characters that Meilisearch rejects.
+
+    Preserves tab, newline, and carriage return (the useful whitespace
+    characters).  All other U+0000-U+001F characters are removed.
+    """
+    return _CONTROL_CHARS_RE.sub("", text)
 
 
 def sanitize_chunk_id(chunk_id: str) -> str:
@@ -35,7 +50,7 @@ def chunk_to_document(chunk: Chunk, schema_version: int) -> dict:
         "source_kind": chunk.source_kind.value,
         "chunk_kind": chunk.chunk_kind.value,
         "language": chunk.language.value,
-        "text": chunk.text,
+        "text": sanitize_text(chunk.text),
         "start_line": chunk.start_line,
         "end_line": chunk.end_line,
         "content_hash": chunk.content_hash,

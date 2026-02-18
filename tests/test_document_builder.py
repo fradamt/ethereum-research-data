@@ -6,6 +6,7 @@ from erd_index.index.document_builder import (
     chunk_to_document,
     chunks_to_documents,
     sanitize_chunk_id,
+    sanitize_text,
 )
 from erd_index.models import Chunk, ChunkKind, Language, SourceKind
 
@@ -360,3 +361,66 @@ class TestSanitizeChunkId:
         chunk = _eip_chunk()
         doc = chunk_to_document(chunk, SCHEMA_VERSION)
         assert doc["id"] == sanitize_chunk_id(chunk.chunk_id)
+
+
+# ---------------------------------------------------------------------------
+# sanitize_text
+# ---------------------------------------------------------------------------
+
+
+class TestSanitizeText:
+    def test_preserves_normal_text(self) -> None:
+        assert sanitize_text("Hello, world!") == "Hello, world!"
+
+    def test_preserves_newlines(self) -> None:
+        assert sanitize_text("line1\nline2\n") == "line1\nline2\n"
+
+    def test_preserves_tabs(self) -> None:
+        assert sanitize_text("\tindented\t") == "\tindented\t"
+
+    def test_preserves_carriage_returns(self) -> None:
+        assert sanitize_text("line1\r\nline2") == "line1\r\nline2"
+
+    def test_strips_null(self) -> None:
+        assert sanitize_text("hello\x00world") == "helloworld"
+
+    def test_strips_bell(self) -> None:
+        assert sanitize_text("alert\x07!") == "alert!"
+
+    def test_strips_backspace(self) -> None:
+        assert sanitize_text("back\x08space") == "backspace"
+
+    def test_strips_vertical_tab(self) -> None:
+        assert sanitize_text("line1\x0bline2") == "line1line2"
+
+    def test_strips_form_feed(self) -> None:
+        assert sanitize_text("page\x0cbreak") == "pagebreak"
+
+    def test_strips_escape(self) -> None:
+        assert sanitize_text("esc\x1b[0m") == "esc[0m"
+
+    def test_strips_all_c0_except_whitespace(self) -> None:
+        # Build a string with all C0 control chars (0x00-0x1F)
+        all_c0 = "".join(chr(i) for i in range(0x20))
+        result = sanitize_text(all_c0)
+        # Only tab (0x09), newline (0x0A), carriage return (0x0D) survive
+        assert result == "\t\n\r"
+
+    def test_hex_code_with_embedded_nulls(self) -> None:
+        # Simulates code chunks like TestPush that can have weird bytes
+        code = "code := common.FromHex(\"0011\x002233\")"
+        result = sanitize_text(code)
+        assert "\x00" not in result
+        assert "0011" in result and "2233" in result
+
+    def test_applied_in_chunk_to_document(self) -> None:
+        chunk = _code_chunk(text="func main() {\x00\n\treturn\n}")
+        doc = chunk_to_document(chunk, SCHEMA_VERSION)
+        assert "\x00" not in doc["text"]
+        assert doc["text"] == "func main() {\n\treturn\n}"
+
+    def test_empty_string(self) -> None:
+        assert sanitize_text("") == ""
+
+    def test_unicode_preserved(self) -> None:
+        assert sanitize_text("Vitalik Buterin \u2014 Ethereum") == "Vitalik Buterin \u2014 Ethereum"
