@@ -1,0 +1,145 @@
+"""Ethereum terminology: synonyms and dictionary for Meilisearch.
+
+Provides bidirectional synonym mappings for Ethereum abbreviations and a
+custom dictionary of compound terms that should be tokenized as single units.
+"""
+
+from __future__ import annotations
+
+import json
+import time
+import urllib.error
+import urllib.request
+
+__all__ = ["apply_terminology_settings", "get_ethereum_dictionary", "get_ethereum_synonyms"]
+
+# Timeout for HTTP requests to Meilisearch.
+_TIMEOUT = 10
+
+# Abbreviation-to-expansions mapping.  Each entry generates bidirectional
+# synonym relationships: the key maps to all values, and each value maps
+# back to the key.
+_ABBREVIATIONS: dict[str, list[str]] = {
+    "ssz": ["simple serialize", "simpleserialize"],
+    "kzg": ["kate polynomial commitment", "kate-zaverucha-goldberg"],
+    "das": ["data availability sampling"],
+    "pbs": ["proposer-builder separation", "proposer builder separation"],
+    "mev": ["maximal extractable value", "miner extractable value"],
+    "ssf": ["single slot finality", "single-slot finality"],
+    "evm": ["ethereum virtual machine"],
+    "bls": ["boneh-lynn-shacham"],
+    "randao": ["random number generation dao"],
+    "cl": ["consensus layer"],
+    "el": ["execution layer"],
+    "peerdas": ["peer data availability sampling"],
+    "lmd-ghost": ["latest message driven ghost"],
+    "ffg": ["friendly finality gadget", "casper ffg"],
+    "rlp": ["recursive length prefix"],
+    "mpt": ["merkle patricia trie"],
+    "blob": ["binary large object"],
+    "eip": ["ethereum improvement proposal"],
+    "eof": ["evm object format"],
+    "il": ["inclusion list"],
+}
+
+# Compound terms that the Meilisearch tokenizer should treat as single tokens.
+_DICTIONARY: list[str] = [
+    "proto-danksharding",
+    "danksharding",
+    "proto-dank-sharding",
+    "single-slot-finality",
+    "proposer-builder-separation",
+    "data-availability-sampling",
+    "verkle-tree",
+    "verkle-trie",
+    "beacon-chain",
+    "execution-layer",
+    "consensus-layer",
+    "state-expiry",
+    "account-abstraction",
+    "maximal-extractable-value",
+    "eip-4844",
+    "eip-1559",
+    "eip-4788",
+    "eip-7594",
+]
+
+
+def get_ethereum_synonyms() -> dict[str, list[str]]:
+    """Return the Meilisearch synonyms mapping for Ethereum terminology.
+
+    Every abbreviation entry is expanded into bidirectional relationships so
+    that searching for either the abbreviation or any expansion finds all
+    related documents.
+    """
+    synonyms: dict[str, list[str]] = {}
+    for abbrev, expansions in _ABBREVIATIONS.items():
+        # abbrev -> all expansions
+        synonyms[abbrev] = list(expansions)
+        # each expansion -> [abbrev] + other expansions
+        for exp in expansions:
+            others = [abbrev] + [e for e in expansions if e != exp]
+            synonyms[exp] = others
+    return synonyms
+
+
+def get_ethereum_dictionary() -> list[str]:
+    """Return custom dictionary entries for Meilisearch tokenizer."""
+    return list(_DICTIONARY)
+
+
+def apply_terminology_settings(meili_url: str, admin_key: str, index_uid: str) -> None:
+    """Apply synonyms and dictionary settings to the Meilisearch index.
+
+    Raises ``urllib.error.HTTPError`` on API errors and ``urllib.error.URLError``
+    if Meilisearch is unreachable.
+    """
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if admin_key:
+        headers["Authorization"] = f"Bearer {admin_key}"
+
+    synonyms = get_ethereum_synonyms()
+    _put_setting(meili_url, index_uid, "synonyms", synonyms, headers)
+
+    dictionary = get_ethereum_dictionary()
+    _put_setting(meili_url, index_uid, "dictionary", dictionary, headers)
+
+
+def _put_setting(
+    meili_url: str,
+    index_uid: str,
+    setting_name: str,
+    payload: dict | list,
+    headers: dict[str, str],
+) -> None:
+    """PUT a single index setting and wait for the task to complete."""
+    url = f"{meili_url}/indexes/{index_uid}/settings/{setting_name}"
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data, headers=headers, method="PUT")
+    resp = urllib.request.urlopen(req, timeout=_TIMEOUT)
+    task_info = json.loads(resp.read())
+    task_uid = task_info.get("taskUid")
+
+    # Poll until the task finishes.
+    if task_uid is not None:
+        _wait_for_task(meili_url, headers, task_uid)
+
+
+def _wait_for_task(
+    meili_url: str, headers: dict[str, str], task_uid: int, *, max_polls: int = 120
+) -> None:
+    """Poll the task endpoint until it succeeds or fails."""
+    url = f"{meili_url}/tasks/{task_uid}"
+    for _ in range(max_polls):
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        resp = urllib.request.urlopen(req, timeout=_TIMEOUT)
+        info = json.loads(resp.read())
+        status = info.get("status")
+        if status == "succeeded":
+            return
+        if status == "failed":
+            error = info.get("error", {})
+            msg = error.get("message", "unknown error")
+            raise RuntimeError(f"Meilisearch task {task_uid} failed: {msg}")
+        time.sleep(1.0)
+    raise TimeoutError(f"Meilisearch task {task_uid} did not complete in time")
