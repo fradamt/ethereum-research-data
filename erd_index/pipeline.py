@@ -123,6 +123,14 @@ def ingest_markdown(
             repo_key = discovered.repository or discovered.source_name
 
             if not dry_run:
+                # Crash-recovery semantics: We upsert to Meilisearch first,
+                # then delete stale chunks, then write the manifest entry.
+                # A crash after Meili upsert but before manifest write leaves
+                # orphan documents in Meili. These are harmless — the same
+                # chunk IDs will be re-upserted on the next run. A full
+                # re-index (--changed-only=False) recovers from any crash
+                # scenario by re-processing all files and cleaning up stale
+                # chunk IDs via the manifest diff.
                 if chunks:
                     # Build Meilisearch documents
                     documents = [
@@ -154,13 +162,20 @@ def ingest_markdown(
                     chunker_version=settings.chunker_version,
                     chunk_ids_json=json.dumps(chunk_ids),
                 )
-            files_processed += 1
+                files_processed += 1
 
+        except ConnectionError:
+            raise  # Meilisearch down — abort entire run
         except Exception:
             errors += 1
             msg = f"{discovered.source_name}:{discovered.relative_path}"
             error_details.append(msg)
             log.exception("Error processing %s", msg)
+            if errors >= 10 and files_processed == 0:
+                raise RuntimeError(
+                    f"Aborting: {errors} consecutive errors with 0 successes. "
+                    "Check Meilisearch connectivity and log output."
+                ) from None
 
     # 6. Clean up stale files (only when processing ALL sources — scoped
     # ingests must not delete data from other sources)
@@ -259,7 +274,11 @@ def _stale_chunk_ids(
     old_entry = get_indexed_file(state_db, repository, file_path)
     if old_entry is None:
         return []
-    old_ids = set(json.loads(old_entry.get("chunk_ids_json", "[]")))
+    try:
+        old_ids = set(json.loads(old_entry.get("chunk_ids_json", "[]")))
+    except json.JSONDecodeError:
+        log.warning("Corrupt chunk_ids_json for %s:%s — treating as empty", repository, file_path)
+        old_ids = set()
     return sorted(old_ids - set(new_chunk_ids))
 
 
@@ -278,17 +297,25 @@ def _cleanup_stale_markdown(
     """
     total_deleted = 0
 
+    # Work on a copy to avoid mutating the caller's dict
+    paths = dict(paths_by_source)
+
     # Include removed sources: manifest repos not in current discovery
     all_repos = get_all_repositories(state_db)
     corpus_repos = {r for r in all_repos if r not in {cr.name for cr in settings.code_repos}}
     for repo in corpus_repos:
-        if repo not in paths_by_source:
-            paths_by_source[repo] = set()  # triggers full stale cleanup
+        if repo not in paths:
+            paths[repo] = set()  # triggers full stale cleanup
 
-    for src_name, current_paths in paths_by_source.items():
+    for src_name, current_paths in paths.items():
         stale_rows = get_stale_files(state_db, src_name, current_paths)
         for row in stale_rows:
-            chunk_ids = json.loads(row.get("chunk_ids_json", "[]"))
+            try:
+                chunk_ids = json.loads(row.get("chunk_ids_json", "[]"))
+            except json.JSONDecodeError:
+                log.warning("Corrupt chunk_ids_json for %s:%s — treating as empty",
+                            row["repository"], row["file_path"])
+                chunk_ids = []
             if chunk_ids:
                 delete_by_ids(settings, chunk_ids)
                 total_deleted += len(chunk_ids)
@@ -391,18 +418,25 @@ def ingest_code(
                     chunker_version=settings.chunker_version,
                     chunk_ids_json=json.dumps(chunk_ids),
                 )
-            files_processed += 1
+                files_processed += 1
 
+        except ConnectionError:
+            raise  # Meilisearch down — abort entire run
         except Exception:
             errors += 1
             msg = f"{discovered.source_name}:{discovered.relative_path}"
             error_details.append(msg)
             log.exception("Error processing %s", msg)
+            if errors >= 10 and files_processed == 0:
+                raise RuntimeError(
+                    f"Aborting: {errors} consecutive errors with 0 successes. "
+                    "Check Meilisearch connectivity and log output."
+                ) from None
 
-    # 6. Clean up stale files (only when processing ALL repos — scoped
-    # ingests must not delete data from other repos)
+    # 6. Clean up stale files (only when processing ALL repos, not truncated
+    # by max_files — scoped ingests must not delete data from other repos)
     chunks_deleted = 0
-    if not dry_run and repo_name is None:
+    if not dry_run and repo_name is None and max_files == 0:
         chunks_deleted = _cleanup_stale_code(settings, state_db, paths_by_repo)
 
     # 7. Finish run log
@@ -511,17 +545,25 @@ def _cleanup_stale_code(
     """
     total_deleted = 0
 
+    # Work on a copy to avoid mutating the caller's dict
+    paths = dict(paths_by_repo)
+
     # Include removed repos: manifest repos that are code repos but no longer in config
     all_repos = get_all_repositories(state_db)
     corpus_names = {cs.name for cs in settings.corpus_sources}
     for repo in all_repos:
-        if repo not in paths_by_repo and repo not in corpus_names and repo:
-            paths_by_repo[repo] = set()  # triggers full stale cleanup
+        if repo not in paths and repo not in corpus_names and repo:
+            paths[repo] = set()  # triggers full stale cleanup
 
-    for repo_name, current_paths in paths_by_repo.items():
-        stale_rows = get_stale_files(state_db, repo_name, current_paths)
+    for current_repo, current_paths in paths.items():
+        stale_rows = get_stale_files(state_db, current_repo, current_paths)
         for row in stale_rows:
-            chunk_ids = json.loads(row.get("chunk_ids_json", "[]"))
+            try:
+                chunk_ids = json.loads(row.get("chunk_ids_json", "[]"))
+            except json.JSONDecodeError:
+                log.warning("Corrupt chunk_ids_json for %s:%s — treating as empty",
+                            row["repository"], row["file_path"])
+                chunk_ids = []
             if chunk_ids:
                 delete_by_ids(settings, chunk_ids)
                 total_deleted += len(chunk_ids)
@@ -570,16 +612,18 @@ def build_graph(
     try:
         # Clear all existing graph data before full rebuild.
         # The graph is fully rebuildable from source, so this is safe.
+        # The entire rebuild (delete + node upsert + edge upsert) runs in a
+        # single transaction — if any step fails, the old graph stays intact.
         log.info("Clearing existing graph data for full rebuild")
         for table in ("code_dependency_edge", "cross_reference_edge",
                       "spec_code_link", "eip_dependency_edge", "node"):
             conn.execute(f"DELETE FROM {table}")
-        conn.commit()
 
         # Collect all chunks and their dependencies
         all_chunks: list[Chunk] = []
         all_deps: list[tuple[Chunk, list[tuple[str, str, str]]]] = []
         graph_errors = 0
+        graph_error_details: list[str] = []
 
         # Process markdown files
         md_files = _discover_markdown_files(settings)
@@ -591,6 +635,7 @@ def build_graph(
                     all_deps.append((chunk, []))
             except Exception:
                 graph_errors += 1
+                graph_error_details.append(discovered.relative_path)
                 log.exception("Graph build: error processing %s", discovered.relative_path)
 
         # Process code files
@@ -606,6 +651,7 @@ def build_graph(
                     all_deps.append((chunk, deps))
             except Exception:
                 graph_errors += 1
+                graph_error_details.append(discovered.relative_path)
                 log.exception("Graph build: error processing %s", discovered.relative_path)
 
         # Pass 1: upsert all nodes
@@ -615,7 +661,6 @@ def build_graph(
             upsert_node(conn, node)
             nodes_upserted += 1
 
-        conn.commit()
         log.info("Graph pass 1: %d nodes upserted", nodes_upserted)
 
         # Pass 2: upsert all edges
@@ -635,6 +680,7 @@ def build_graph(
                 upsert_code_dep(conn, edge)
                 edges_upserted += 1
 
+        # Single commit for the entire rebuild (delete + nodes + edges)
         conn.commit()
         log.info("Graph pass 2: %d edges upserted", edges_upserted)
 
@@ -646,10 +692,12 @@ def build_graph(
             chunks_upserted=nodes_upserted,
             chunks_deleted=0,
             errors=graph_errors,
+            error_details=graph_error_details or None,
         )
 
     except Exception:
         log.exception("Graph build failed")
+        conn.rollback()
         finish_run(state_db, run_id, files_processed=0, files_skipped=0,
                    chunks_upserted=0, chunks_deleted=0, errors=1,
                    error_details=["graph build failed"])
@@ -680,9 +728,12 @@ def link_specs(
 
     graph_db_path = settings.resolved_graph_db
     if not graph_db_path.exists():
-        log.warning("Graph DB not found at %s; run build-graph first", graph_db_path)
-        print("Error: graph.db not found. Run 'build-graph' first.")
-        return
+        raise FileNotFoundError(
+            f"Graph DB not found at {graph_db_path}; run build-graph first"
+        )
+
+    state_db = init_state_db(settings)
+    run_id = start_run(state_db, "link-specs")
 
     conn = get_connection(graph_db_path)
     try:
@@ -703,6 +754,22 @@ def link_specs(
         for rel, count in sorted(counts.items()):
             print(f"  {rel}: {count}")
 
+        finish_run(
+            state_db,
+            run_id,
+            files_processed=0,
+            files_skipped=0,
+            chunks_upserted=total,
+            chunks_deleted=0,
+            errors=0,
+        )
+
+    except Exception:
+        log.exception("Spec-code linking failed")
+        finish_run(state_db, run_id, files_processed=0, files_skipped=0,
+                   chunks_upserted=0, chunks_deleted=0, errors=1,
+                   error_details=["spec-code linking failed"])
+        raise
     finally:
         conn.close()
 
@@ -723,24 +790,36 @@ def sync_all(
 
     Each phase is isolated so that a failure in code ingestion (e.g. missing
     repos) or graph building does not prevent markdown ingestion from completing.
+    Errors are accumulated and raised at the end so the caller knows the sync
+    was not fully successful.
     """
+    phase_errors: list[str] = []
+
     ingest_markdown(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)
 
     try:
         ingest_code(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)
     except Exception:
+        phase_errors.append("ingest-code")
         log.exception("Code ingestion failed; continuing with graph build")
 
     if not dry_run:
         try:
             build_graph(settings, changed_only=changed_only, verbose=verbose)
         except Exception:
+            phase_errors.append("build-graph")
             log.exception("Graph build failed; sync completing without spec-code linking")
 
         try:
             link_specs(settings, verbose=verbose)
         except Exception:
+            phase_errors.append("link-specs")
             log.exception("Spec-code linking failed; sync completing without links")
+
+    if phase_errors:
+        raise RuntimeError(
+            f"sync_all completed with errors in phases: {', '.join(phase_errors)}"
+        )
 
 
 # ---------------------------------------------------------------------------

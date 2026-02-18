@@ -29,8 +29,7 @@ def extract_frontmatter(text: str) -> tuple[dict[str, Any], str]:
 
     yaml_block = text[3:end].strip()
     body = text[end + 4:]  # skip past the closing "---\n"
-    if body.startswith("\n"):
-        body = body[1:]
+    body = body.lstrip("\r\n")
 
     try:
         fm = yaml.safe_load(yaml_block)

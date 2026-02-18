@@ -73,7 +73,10 @@ def _auto_discover_corpus_sources(settings: Settings) -> list[CorpusSource]:
             continue
         if subdir.name in configured_names:
             continue
-        # Check if the directory contains .md files
+        # Quick top-level check (non-recursive for speed); the actual walk
+        # uses recursive globs via CorpusSource.include patterns.
+        # A source with .md files only in subdirectories must be added
+        # to config explicitly.
         if any(subdir.glob("*.md")):
             relative_path = f"{settings.corpus_dir}/{subdir.name}"
             discovered.append(CorpusSource(

@@ -18,7 +18,6 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # SSL — macOS system Python sometimes lacks default certs
 # ---------------------------------------------------------------------------
@@ -28,6 +27,13 @@ for _ca in ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt"):
     if os.path.exists(_ca):
         _SSL_CTX.load_verify_locations(_ca)
         break
+else:
+    # No CA bundle found; ssl.create_default_context() will use system defaults
+    import warnings
+    warnings.warn(
+        "No CA bundle found at standard paths; using system SSL defaults",
+        stacklevel=1,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +117,7 @@ class DiscourseScraper:
                     retry_after = exc.headers.get("Retry-After")
                     if retry_after:
                         try:
-                            wait = int(retry_after)
+                            wait = max(int(retry_after), self.delay)
                         except ValueError:
                             # Retry-After can be a date string; fall back to backoff
                             wait = self.delay * (2 ** attempt)
@@ -152,7 +158,7 @@ class DiscourseScraper:
         """Fetch /about.json and save to raw_dir/about.json."""
         dest = self.raw_dir / "about.json"
         if dest.exists():
-            print(f"  about.json exists, skipping")
+            print("  about.json exists, skipping")
             return json.loads(dest.read_text())
 
         print("  Fetching /about.json …")
@@ -176,7 +182,7 @@ class DiscourseScraper:
         """Fetch /categories.json and save.  Returns flat category list."""
         dest = self.raw_dir / "categories.json"
         if dest.exists():
-            print(f"  categories.json exists, loading")
+            print("  categories.json exists, loading")
             data = json.loads(dest.read_text())
             cats = data.get("category_list", {}).get("categories", [])
             print(f"    {len(cats)} categories")
@@ -244,6 +250,10 @@ class DiscourseScraper:
                 data = self._fetch_json(f"/c/{cat_slug}/{cat_id}.json?page={page}")
                 self._throttle()
                 if not data:
+                    if page == 0:
+                        print(f"    Warning: failed to fetch category {cat_name} (id={cat_id})")
+                    else:
+                        print(f"    Warning: failed to fetch page {page} of {cat_name}, stopping pagination")
                     break
 
                 topics = data.get("topic_list", {}).get("topics", [])
@@ -278,6 +288,8 @@ class DiscourseScraper:
         known_ids = set(index)
         print("    Sweeping /latest …")
         page = 0
+        consecutive_all_known = 0
+        max_lookahead = 2
         while True:
             data = self._fetch_json(f"/latest.json?page={page}")
             self._throttle()
@@ -294,11 +306,18 @@ class DiscourseScraper:
                 if tid not in known_ids:
                     all_known = False
                     known_ids.add(tid)
+                    # TODO: Look up category name from categories.json for newly
+                    # discovered topics.  Currently sets category_name="" for
+                    # topics found via /latest.
                     index[tid] = self._topic_meta(t, "")
 
             if all_known:
-                print(f"      Page {page}: all topics known, stopping")
-                break
+                consecutive_all_known += 1
+                if consecutive_all_known > max_lookahead:
+                    print(f"      Page {page}: {max_lookahead + 1} consecutive all-known pages, stopping")
+                    break
+            else:
+                consecutive_all_known = 0
 
             if not data.get("topic_list", {}).get("more_topics_url"):
                 break
@@ -388,7 +407,13 @@ class DiscourseScraper:
         got = len(posts)
         expected = len(all_ids)
         if got < expected:
-            print(f"  Warning: topic {topic_id} has {got}/{expected} posts (some pages failed)")
+            # Allow up to 5% missing posts (some may be deleted/hidden)
+            missing_pct = (expected - got) / expected * 100
+            if missing_pct > 5:
+                print(f"  Warning: topic {topic_id} has {got}/{expected} posts ({missing_pct:.0f}% missing), will retry")
+                return None
+            else:
+                print(f"  Note: topic {topic_id} has {got}/{expected} posts ({missing_pct:.0f}% missing, within tolerance)")
 
         return data
 

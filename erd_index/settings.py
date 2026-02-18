@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -106,6 +107,10 @@ def load_settings(
     if config_path.exists():
         with open(config_path, "rb") as f:
             raw = tomllib.load(f)
+    else:
+        logging.getLogger(__name__).warning(
+            "Config file not found: %s; using defaults", config_path,
+        )
 
     # Meilisearch
     meili_raw = raw.get("meilisearch", {})

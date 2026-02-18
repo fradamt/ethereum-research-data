@@ -262,6 +262,11 @@ def find_spec_code_links(
             best_links[key] = link
 
     for node in code_nodes:
+        # TODO: Heuristic 1 (_heuristic_eip_ref_in_text) is not called here
+        # because chunk text is not available from the graph DB at this point.
+        # It is only used via find_spec_code_links_from_text() during graph
+        # building when text is available.
+
         # Heuristic 2 — symbol name
         for link in _heuristic_symbol_name(node, indexed_eips):
             _track(link)

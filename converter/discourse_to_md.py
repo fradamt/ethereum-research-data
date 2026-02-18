@@ -16,7 +16,6 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # YAML frontmatter helpers
 # ---------------------------------------------------------------------------
@@ -39,11 +38,12 @@ def _yaml_scalar(value: object) -> str:
         or ": " in s
         or s.startswith("- ")
         or "\n" in s
+        or "\r" in s
         or s in ("true", "false", "null", "yes", "no", "on", "off")
         or s != s.strip()
         or re.match(r"^[\d.eE+-]+$", s)
     ):
-        escaped = s.replace("\\", "\\\\").replace('"', '\\"')
+        escaped = s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
         return f'"{escaped}"'
     return s
 
@@ -125,7 +125,7 @@ def _parse_yaml_value(raw: str) -> object:
         raw.startswith("'") and raw.endswith("'")
     ):
         s = raw[1:-1]
-        s = s.replace('\\"', '"').replace("\\\\", "\\")
+        s = s.replace("\\\\", "\x00").replace('\\"', '"').replace("\\n", "\n").replace("\\r", "\r").replace("\x00", "\\")
         return s
 
     # Bool / null
@@ -538,23 +538,24 @@ class DiscourseConverter:
             # determine the output filename cheaply.
             try:
                 topic_id, slug = _extract_topic_id_slug(path)
-            except Exception as exc:
+            except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
                 print(f"  Skipping {path.name}: {exc}")
                 skipped += 1
                 continue
 
             out_path = self.corpus_dir / safe_filename(topic_id, slug)
 
-            # Skip if output already exists (incremental mode)
+            # Skip if output already exists and is newer than source
             if not force and out_path.exists():
-                skipped += 1
-                continue
+                if out_path.stat().st_mtime >= path.stat().st_mtime:
+                    skipped += 1
+                    continue
 
             # Full conversion only for new/missing topics
             try:
                 result = self.convert_topic(path)
-            except Exception as exc:
-                print(f"  Skipping {path.name}: {exc}")
+            except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
+                print(f"  Skipping {path.name}: {type(exc).__name__}: {exc}")
                 skipped += 1
                 continue
 

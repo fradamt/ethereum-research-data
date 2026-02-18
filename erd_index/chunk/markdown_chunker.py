@@ -8,10 +8,13 @@ Strategies:
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime
 
 from erd_index.models import Chunk, ChunkKind, ParsedUnit, SourceKind
 from erd_index.settings import ChunkSizing
+
+log = logging.getLogger(__name__)
 
 __all__ = ["chunk_parsed_units"]
 
@@ -195,10 +198,10 @@ def _unit_to_chunk(unit: ParsedUnit) -> Chunk:
         author=unit.author,
         category=unit.category,
         research_thread=fm.get("research_thread", ""),
-        views=int(fm.get("views", 0)),
-        likes=int(fm.get("likes", 0)),
-        posts_count=int(fm.get("posts_count", 0)),
-        influence_score=float(fm.get("influence_score", 0.0)),
+        views=_int_or(fm.get("views", 0)),
+        likes=_int_or(fm.get("likes", 0)),
+        posts_count=_int_or(fm.get("posts_count", 0)),
+        influence_score=_float_or(fm.get("influence_score", 0.0)),
         # EIP fields (stashed in frontmatter by parser)
         eip=fm.get("_eip"),
         eip_status=fm.get("_eip_status", ""),
@@ -214,6 +217,22 @@ def _unit_to_chunk(unit: ParsedUnit) -> Chunk:
     )
 
 
+def _int_or(val: object, default: int = 0) -> int:
+    """Coerce *val* to int, returning *default* on failure."""
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
+def _float_or(val: object, default: float = 0.0) -> float:
+    """Coerce *val* to float, returning *default* on failure."""
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return default
+
+
 def _date_to_ts(val: object) -> int:
     """Convert a frontmatter date value to a Unix timestamp, or 0."""
     if isinstance(val, datetime):
@@ -221,8 +240,10 @@ def _date_to_ts(val: object) -> int:
     if isinstance(val, date):
         return int(datetime(val.year, val.month, val.day).timestamp())
     if isinstance(val, str) and val:
+        s = val.replace("Z", "+00:00") if val.endswith("Z") else val
         try:
-            return int(datetime.fromisoformat(val).timestamp())
+            return int(datetime.fromisoformat(s).timestamp())
         except ValueError:
+            log.debug("Unparseable date: %r", val)
             return 0
     return 0

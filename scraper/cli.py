@@ -23,7 +23,7 @@ def _load_sources(repo_root: Path) -> list[dict]:
     if not path.exists():
         print(f"Error: {path} not found", file=sys.stderr)
         sys.exit(1)
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     return data.get("sources", [])
 

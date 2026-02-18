@@ -79,7 +79,16 @@ def delete_by_filter(settings: Settings, filter_str: str) -> None:
 
 
 def get_index_stats(settings: Settings) -> dict:
-    """Return document count, index size, field distribution, etc."""
+    """Return index statistics as a plain dict.
+
+    On success the dict contains:
+        ``{"numberOfDocuments": int, "isIndexing": bool, "fieldDistribution": dict}``
+
+    On error (server unreachable, index missing, etc.) the dict contains:
+        ``{"error": str}``
+
+    Callers must check for the ``"error"`` key before using the result.
+    """
     try:
         client = get_client(settings)
         index = client.index(settings.meili.index_name)
@@ -104,6 +113,6 @@ def _wait_and_check(client, task_uid: int, description: str) -> None:
     """Wait for a Meilisearch task to complete and raise on failure."""
     result = client.wait_for_task(task_uid, timeout_in_ms=120_000)
     status = result.get("status") if isinstance(result, dict) else getattr(result, "status", None)
-    if status == "failed":
+    if status != "succeeded":
         error = result.get("error") if isinstance(result, dict) else getattr(result, "error", None)
-        raise RuntimeError(f"Meilisearch task failed ({description}): {error}")
+        raise RuntimeError(f"Meilisearch task {status} ({description}): {error}")

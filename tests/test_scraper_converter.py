@@ -308,8 +308,8 @@ class TestIncrementalIndex:
         # Index unchanged — still only topic 1
         assert len(result) == 1
         assert "1" in result
-        # Should NOT have fetched page 1 because all_known was True
-        assert mock_urlopen.call_count == 1
+        # Lookahead of 2: fetches page 0, then 2 more all-known pages before stopping
+        assert mock_urlopen.call_count == 3
 
     @patch("time.sleep")
     @patch("urllib.request.urlopen")

@@ -164,6 +164,10 @@ def _get_stored_schema_version(client: meilisearch.Client, index_name: str) -> i
         hits = result.get("hits", [])
         if hits:
             return int(hits[0].get("schema_version", 0))
-    except (MeilisearchApiError, MeilisearchCommunicationError):
-        pass
+    except (MeilisearchApiError, MeilisearchCommunicationError) as exc:
+        log.warning(
+            "Could not determine schema version for '%s': %s; defaulting to 0",
+            index_name,
+            exc,
+        )
     return 0

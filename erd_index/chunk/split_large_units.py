@@ -27,7 +27,7 @@ def split_large_unit(unit: ParsedUnit, sizing: ChunkSizing) -> list[Chunk]:
     Returns a list of ``Chunk`` objects with ``part_index`` and ``part_count``.
     """
     header = _build_header(unit)
-    body_lines = _extract_body_lines(unit.text, header)
+    body_lines, body_start = _extract_body_lines(unit.text, header)
 
     if not body_lines:
         # Degenerate case: the whole thing is effectively header.
@@ -43,8 +43,8 @@ def split_large_unit(unit: ParsedUnit, sizing: ChunkSizing) -> list[Chunk]:
     total = len(parts)
     chunks: list[Chunk] = []
     for i, (text, start_offset, end_offset) in enumerate(parts):
-        start_line = unit.start_line + start_offset
-        end_line = unit.start_line + end_offset
+        start_line = unit.start_line + body_start + start_offset
+        end_line = unit.start_line + body_start + end_offset
         chunks.append(_make_chunk(unit, text, i, total, start_line, end_line))
 
     return chunks
@@ -66,8 +66,12 @@ def _build_header(unit: ParsedUnit) -> str:
     return "\n".join(parts)
 
 
-def _extract_body_lines(full_text: str, header: str) -> list[str]:
-    """Extract the body lines (everything after the header)."""
+def _extract_body_lines(full_text: str, header: str) -> tuple[list[str], int]:
+    """Extract the body lines (everything after the header).
+
+    Returns (body_lines, body_start) where *body_start* is the 0-based line
+    index where the body begins within *full_text*.
+    """
     lines = full_text.split("\n")
     header_line_count = len(header.split("\n"))
     # Skip past the signature/docstring area.  We use a simple heuristic:
@@ -90,7 +94,7 @@ def _extract_body_lines(full_text: str, header: str) -> list[str]:
     else:
         body_start = header_line_count
 
-    return lines[body_start:]
+    return lines[body_start:], body_start
 
 
 def _is_statement_start(line: str, base_indent: int) -> bool:

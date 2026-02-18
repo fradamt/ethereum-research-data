@@ -437,7 +437,7 @@ def _parse_int_list(val: Any) -> list[int]:
             try:
                 out.append(int(v))
             except (TypeError, ValueError):
-                pass
+                log.debug("Skipping non-integer value %r in int list", v)
         return out
     if isinstance(val, str):
         out = []
@@ -445,6 +445,6 @@ def _parse_int_list(val: Any) -> list[int]:
             try:
                 out.append(int(part))
             except ValueError:
-                pass
+                log.debug("Skipping non-integer value %r in int list", part)
         return out
     return []
