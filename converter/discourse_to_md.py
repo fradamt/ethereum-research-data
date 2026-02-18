@@ -665,7 +665,7 @@ class DiscourseConverter:
             if rendered_replies == 0:
                 del lines[replies_start:]
 
-        remaining = len(posts) - 1 - rendered_replies
+        remaining = len(posts) - 1 - len(reply_posts)
         if remaining > 0:
             lines.append("")
             lines.append(f"*({remaining} more replies not shown)*")
