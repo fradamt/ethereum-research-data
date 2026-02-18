@@ -294,6 +294,19 @@ class TestWalkCodeRepo:
         assert "data.json" not in rel_paths
         assert "style.css" not in rel_paths
 
+    def test_relative_path_resolved_against_project_root(self, tmp_path: Path):
+        """Relative paths like ../go-ethereum resolve against project_root."""
+        project = tmp_path / "project"
+        project.mkdir()
+        sibling_repo = tmp_path / "go-ethereum"
+        _populate_tree(sibling_repo, {"main.go": "package main"})
+
+        cr = CodeRepo(name="geth", path="../go-ethereum", language="go")
+        found = _walk_code_repo(cr, project_root=project)
+        assert len(found) == 1
+        assert found[0].relative_path == "main.go"
+        assert found[0].absolute_path == sibling_repo / "main.go"
+
 
 # ---------------------------------------------------------------------------
 # walk_sources (integration)

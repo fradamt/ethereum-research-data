@@ -4,7 +4,7 @@
 > indexing pipeline for Ethereum research data. Written to facilitate code review.
 
 **Package**: `ethereum-research-data-indexer` 0.1.0
-**Location**: `/Users/francesco/EF/ethereum-research-data/erd_index/`
+**Location**: `erd_index/`
 **Codebase**: ~6,700 lines of implementation + ~3,700 lines of tests (305 passing)
 **Dependencies**: meilisearch, pydantic v2, PyYAML, tree-sitter 0.23, orjson
 **Runtime**: Meilisearch 1.35.1 (localhost:7700), Ollama + nomic-embed-text (optional, for hybrid search)
@@ -464,7 +464,7 @@ chunker_version = "0.1.0"            # bump to force rechunk of all files
 
 [[code_repos]]
 name = "go-ethereum"
-path = "~/EF/go-ethereum"
+path = "../go-ethereum"
 language = "go"
 include = ["**/*.go"]
 exclude = ["vendor/**", "build/**", "tests/testdata/**"]
@@ -677,9 +677,12 @@ No known bugs. All planned features are implemented and tested.
 
 ### External artifacts
 
+These are machine-specific examples from the original development setup.
+They are not required for running the indexer and will vary per installation.
+
 | File | Purpose |
 |------|---------|
 | `~/.claude/skills/erd-search/SKILL.md` | Claude Code search skill (replaces QMD for search) |
-| `~/Library/LaunchAgents/com.meilisearch.plist` | Auto-start Meilisearch |
-| `~/Library/LaunchAgents/com.erd-index.sync.plist` | Hourly sync cron |
+| `~/Library/LaunchAgents/com.meilisearch.plist` | Auto-start Meilisearch (macOS) |
+| `~/Library/LaunchAgents/com.erd-index.sync.plist` | Hourly sync cron (macOS) |
 | `~/.local/bin/erd-index-sync.sh` | Sync script for launchd |

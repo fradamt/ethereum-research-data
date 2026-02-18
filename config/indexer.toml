@@ -29,30 +29,34 @@ chunker_version = "0.1.0"
 
 # Code repositories to index
 # Each entry: logical name -> local path + language
+# Code repositories to index.
+# Paths are relative to project_root or absolute. Use ~ for home directory.
+# Repos that don't exist on disk are silently skipped during sync.
+# Adjust paths to match your local checkout locations.
 [[code_repos]]
 name = "go-ethereum"
-path = "~/EF/go-ethereum"
+path = "../go-ethereum"
 language = "go"
 include = ["**/*.go"]
 exclude = ["vendor/**", "build/**", "tests/testdata/**"]
 
 [[code_repos]]
 name = "execution-specs"
-path = "~/EF/execution-specs"
+path = "../execution-specs"
 language = "python"
 include = ["src/**/*.py"]
 exclude = ["**/__pycache__/**", "**/test_*.py"]
 
 [[code_repos]]
 name = "lighthouse"
-path = "~/EF/lighthouse"
+path = "../lighthouse"
 language = "rust"
 include = ["**/*.rs"]
 exclude = ["target/**"]
 
 [[code_repos]]
 name = "consensus-specs"
-path = "~/EF/consensus-specs"
+path = "../consensus-specs"
 language = "python"
 include = ["tests/**/*.py"]
 exclude = []

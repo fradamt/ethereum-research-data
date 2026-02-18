@@ -39,9 +39,17 @@ class CodeRepo:
     include: list[str] = field(default_factory=lambda: ["**/*"])
     exclude: list[str] = field(default_factory=list)
 
-    @property
-    def resolved_path(self) -> Path:
-        return Path(self.path).expanduser().resolve()
+    def resolve_path(self, project_root: Path | None = None) -> Path:
+        """Return the absolute repo path.
+
+        Paths starting with ``~`` are expanded via :py:meth:`Path.expanduser`.
+        Relative paths (including ``../``) are resolved against *project_root*
+        when provided, otherwise against the current working directory.
+        """
+        p = Path(self.path).expanduser()
+        if not p.is_absolute() and project_root is not None:
+            p = project_root / p
+        return p.resolve()
 
 
 @dataclass

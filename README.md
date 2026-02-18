@@ -1,118 +1,118 @@
 # ethereum-research-data
 
-Shareable corpus of Ethereum protocol research from public sources.
-Scrapes Discourse forums (ethresear.ch, Ethereum Magicians, etc.),
-converts to searchable markdown with YAML frontmatter, and maintains
-the corpus for use with any search or indexing tool.
+Shareable corpus of Ethereum protocol research with full-text search.
 
-## Quick start
+## What's included
+
+- **Corpus pipeline** (`scraper/`, `converter/`) -- scrapes Discourse forums
+  (ethresear.ch, Ethereum Magicians), converts to markdown with YAML
+  frontmatter. Stdlib-only Python, no dependencies.
+- **Search infrastructure** (`erd_index/`) -- parses, chunks, and indexes the
+  corpus (plus code repositories) into Meilisearch. Supports keyword search,
+  faceted filtering, and optional hybrid search via Ollama embeddings.
+
+## Prerequisites
+
+| Component | Required for | Install |
+|-----------|-------------|---------|
+| Python 3.10+ | everything | -- |
+| [uv](https://docs.astral.sh/uv/) | search infrastructure | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| [Meilisearch](https://www.meilisearch.com/docs/learn/getting_started/installation) | search infrastructure | see link |
+| [Ollama](https://ollama.com) + `nomic-embed-text` | hybrid search (optional) | `ollama pull nomic-embed-text` |
+
+## Quick start -- corpus only
+
+No dependencies beyond Python stdlib:
 
 ```bash
-# Clone the repo
-git clone https://github.com/your-org/ethereum-research-data
-cd ethereum-research-data
+# Scrape all configured Discourse forums and convert to markdown
+python -m scraper && python -m converter
 
-# Scrape all configured sources and convert to markdown
+# Or use the convenience script (equivalent)
 scripts/refresh.sh
 
-# Or scrape a single source
-scripts/refresh.sh --source ethresearch
-
-# (Optional) Copy all EIPs into the corpus
+# Optionally copy EIPs into the corpus
 python3 scripts/curate_eips.py --eips-dir /path/to/EIPs/EIPS
-
-# (Optional) Set up QMD for full-text + semantic search
-scripts/setup_qmd.sh
 ```
 
-Requires Python 3.10+ (stdlib only — no pip dependencies).
-
-## Directory structure
-
-```
-sources.json           # Source registry (URLs, output paths)
-scraper/               # Discourse forum scraper
-converter/             # JSON -> markdown converter
-scripts/               # Pipeline and utility scripts
-raw/                   # Scraped JSON (gitignored, regeneratable)
-corpus/                # The deliverable — searchable markdown
-  ethresearch/         # One .md per ethresear.ch topic
-  magicians/           # One .md per Ethereum Magicians topic
-  eips/                # All EIPs (optional, from EIPs repo)
-```
-
-## Adding a new source
-
-To add a new Discourse forum, add an entry to `sources.json`:
-
-```json
-{
-  "name": "mysite",
-  "type": "discourse",
-  "url": "https://mysite.example.com",
-  "raw_dir": "raw/mysite",
-  "corpus_dir": "corpus/mysite"
-}
-```
-
-Then run `scripts/refresh.sh`. No code changes needed.
-
-## Custom sources
-
-You can add any collection of markdown files to the corpus without going
-through the scraper/converter pipeline. Just create a subdirectory under
-`corpus/` and place `.md` files in it:
+## Quick start -- full search
 
 ```bash
-mkdir corpus/my-papers
+# Install Python dependencies
+uv sync
 
-# Each file should have YAML frontmatter
-cat > corpus/my-papers/example.md << 'EOF'
----
-title: "My Research Paper"
-author: alice
-date: 2025-06-15
-source: custom
----
+# Start Meilisearch (separate terminal)
+meilisearch --master-key=changeme
+export MEILI_MASTER_KEY=changeme
 
-# My Research Paper
+# Build the corpus
+scripts/refresh.sh
 
-Content here...
-EOF
-
-# Reindex to make it searchable
-scripts/setup_qmd.sh
+# Index into Meilisearch
+./scripts/index_meili.sh
 ```
 
-Drop-in directories are never modified by `refresh.sh` — only directories
-listed in `sources.json` are managed by the pipeline. The `setup_qmd.sh`
-script auto-discovers all subdirectories under `corpus/` and creates a
-QMD collection for each.
+On subsequent runs, `index_meili.sh` performs an incremental sync -- only
+changed files are reprocessed.
 
-## Enrichment
+## Configuration
 
-The corpus is designed to be enriched by external tools. Enrichment
-tools can read the markdown files and add YAML frontmatter fields
-(influence scores, thread classification, related topics, etc.)
-without modifying the core pipeline. The converter preserves any
-extra frontmatter fields on re-conversion.
+All indexer settings live in `config/indexer.toml`. Key sections:
 
-## Search with QMD
+- **`[meilisearch]`** -- URL, index name, batch size
+- **`[paths]`** -- corpus directory, data/state databases
+- **`[chunk_sizing]`** -- target and max character counts per chunk
+- **`[[code_repos]]`** -- code repositories to index (Go, Python, Rust).
+  Paths are relative to the project root; adjust to match your local checkout
+  locations. Repos that don't exist on disk are silently skipped.
+- **`[[corpus_sources]]`** -- markdown corpus directories to index
 
-[QMD](https://github.com/tobi/qmd) provides keyword and semantic
-search over the corpus. After installing QMD:
+Environment variables: set `MEILI_MASTER_KEY` to match the key Meilisearch
+was started with.
+
+## Search examples
 
 ```bash
-# Set up collections (auto-discovers corpus/ subdirectories, idempotent)
-scripts/setup_qmd.sh
+# Keyword search
+curl 'http://localhost:7700/indexes/eth_chunks_current/search' \
+  -H "Authorization: Bearer changeme" \
+  -d '{"q": "proposer boost", "limit": 5}'
 
-# Search
-qmd search "proposer boost" --collection ethresearch
-qmd vsearch "liveness under asynchrony"
+# Filter by source kind
+curl 'http://localhost:7700/indexes/eth_chunks_current/search' \
+  -H "Authorization: Bearer changeme" \
+  -d '{"q": "EIP-4844 blob gas", "filter": "source_kind = ethresearch", "limit": 5}'
+
+# Search code only
+curl 'http://localhost:7700/indexes/eth_chunks_current/search' \
+  -H "Authorization: Bearer changeme" \
+  -d '{"q": "process_attestation", "filter": "doc_type = code", "limit": 5}'
 ```
+
+## Development
+
+```bash
+uv sync --group dev
+
+# Run tests
+uv run pytest
+
+# Lint and format
+uv run ruff check .
+uv run ruff format .
+
+# Type checking
+uv run mypy erd_index/
+```
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the corpus pipeline design and
+[REVIEW.md](REVIEW.md) for a detailed walkthrough of the `erd_index`
+indexing pipeline (data model, chunking strategy, graph sidecar, incremental
+state management).
 
 ## License
 
-The scraped content belongs to its original authors under the
-respective forum licenses. This tooling is provided as-is for
-research purposes.
+The scraped content belongs to its original authors under the respective
+forum licenses. This tooling is provided as-is for research purposes.

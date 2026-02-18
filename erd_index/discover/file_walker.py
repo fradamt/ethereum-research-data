@@ -41,7 +41,7 @@ def walk_sources(settings: Settings) -> Iterator[DiscoveredFile]:
         results.extend(_walk_corpus_source(source, settings.project_root))
 
     for repo in settings.code_repos:
-        results.extend(_walk_code_repo(repo))
+        results.extend(_walk_code_repo(repo, settings.project_root))
 
     results.sort(key=lambda f: (f.source_name, f.relative_path))
     yield from results
@@ -81,9 +81,9 @@ def _walk_corpus_source(
     return found
 
 
-def _walk_code_repo(repo: CodeRepo) -> list[DiscoveredFile]:
+def _walk_code_repo(repo: CodeRepo, project_root: Path | None = None) -> list[DiscoveredFile]:
     """Walk a single code repository."""
-    root = repo.resolved_path
+    root = repo.resolve_path(project_root)
     if not root.is_dir():
         log.warning("Code repo %r path does not exist: %s", repo.name, root)
         return []
