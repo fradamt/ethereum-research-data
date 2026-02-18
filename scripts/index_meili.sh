@@ -9,7 +9,7 @@
 #
 # Prerequisites:
 #   - Meilisearch running at http://localhost:7700 (or set ERD_MEILI_URL)
-#   - MEILI_MASTER_KEY env var set if Meilisearch has auth enabled
+#   - MEILI_MASTER_KEY env var set (e.g. export MEILI_MASTER_KEY=erd-dev-key)
 #
 # Config: config/indexer.toml
 # Data:   data/graph.db, data/index_state.db (gitignored, rebuildable)

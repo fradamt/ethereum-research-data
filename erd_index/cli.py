@@ -37,13 +37,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override Meilisearch batch size (0 = use config default)",
     )
 
+    # Shared verbose flag — accepted on both the main parser and subcommands
+    # so that both `erd-index -v sync` and `erd-index sync -v` work.
+    verbose_parent = argparse.ArgumentParser(add_help=False)
+    verbose_parent.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+
     sub = parser.add_subparsers(dest="command")
 
     # init
     sub.add_parser("init", help="Initialize Meilisearch index and SQLite databases")
 
     # ingest-md
-    md = sub.add_parser("ingest-md", help="Ingest markdown from corpus/")
+    md = sub.add_parser("ingest-md", help="Ingest markdown from corpus/", parents=[verbose_parent])
     md.add_argument(
         "--changed-only", action="store_true", help="Only process changed files"
     )
@@ -53,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ingest-code
-    code = sub.add_parser("ingest-code", help="Ingest code from configured repos")
+    code = sub.add_parser("ingest-code", help="Ingest code from configured repos", parents=[verbose_parent])
     code.add_argument("--repo", help="Only process a specific repo")
     code.add_argument("--changed-only", action="store_true", help="Only process changed files")
     code.add_argument("--dry-run", action="store_true", help="Parse and chunk without writing")
@@ -62,11 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # build-graph
-    graph = sub.add_parser("build-graph", help="Build/update dependency graph")
+    graph = sub.add_parser("build-graph", help="Build/update dependency graph", parents=[verbose_parent])
     graph.add_argument("--changed-only", action="store_true")
 
     # sync
-    sync = sub.add_parser("sync", help="Full sync: md + code + graph")
+    sync = sub.add_parser("sync", help="Full sync: md + code + graph", parents=[verbose_parent])
     sync.add_argument(
         "--full-rebuild",
         action="store_true",
@@ -75,7 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--dry-run", action="store_true", help="Parse and chunk without writing")
 
     # link-specs
-    sub.add_parser("link-specs", help="Find and upsert spec-to-code links via heuristics")
+    sub.add_parser("link-specs", help="Find and upsert spec-to-code links via heuristics", parents=[verbose_parent])
 
     # stats
     stats = sub.add_parser("stats", help="Show index and graph statistics")

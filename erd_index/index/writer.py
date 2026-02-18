@@ -83,7 +83,14 @@ def get_index_stats(settings: Settings) -> dict:
     try:
         client = get_client(settings)
         index = client.index(settings.meili.index_name)
-        return dict(index.get_stats())
+        raw = index.get_stats()
+        # The SDK returns a typed object with snake_case attributes.
+        # Normalize to a plain dict with camelCase keys for compatibility.
+        return {
+            "numberOfDocuments": getattr(raw, "number_of_documents", 0),
+            "isIndexing": getattr(raw, "is_indexing", False),
+            "fieldDistribution": dict(getattr(raw, "field_distribution", {}) or {}),
+        }
     except (MeilisearchCommunicationError, MeilisearchApiError, ConnectionError) as exc:
         return {"error": str(exc)}
 
