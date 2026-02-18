@@ -23,7 +23,7 @@ immediately or refresh with the latest posts first.
 | Component | Required for | Install |
 |-----------|-------------|---------|
 | Python 3.10+ | everything | -- |
-| [uv](https://docs.astral.sh/uv/) | search infrastructure | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| [uv](https://docs.astral.sh/uv/) | everything | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | [Meilisearch](https://www.meilisearch.com/docs/learn/getting_started/installation) | search infrastructure | see below |
 | [Ollama](https://ollama.com) + `nomic-embed-text` | hybrid search (optional) | `ollama pull nomic-embed-text` |
 
