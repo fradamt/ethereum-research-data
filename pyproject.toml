@@ -16,10 +16,13 @@ dependencies = [
   "tree-sitter-go>=0.23,<0.24",
   "tree-sitter-rust>=0.23,<0.23.3",
   "orjson>=3.10,<4.0",
+  "tokenizers>=0.22.2",
 ]
 
 [project.scripts]
 erd-index = "erd_index.cli:main"
+erd-embed-proxy = "erd_index.embed_proxy:main"
+erd-search = "erd_index.search_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["erd_index"]
