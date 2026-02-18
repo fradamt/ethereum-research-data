@@ -190,7 +190,7 @@ def extract_dependencies(chunk: Chunk) -> list[tuple[str, str, str]]:
     from_sym = chunk.symbol_qualname or f"{chunk.path}:{chunk.symbol_name or 'module'}"
 
     edges: list[tuple[str, str, str]] = []
-    seen: set[str] = set()
+    seen: set[tuple[str, str]] = set()
     body = chunk.text
 
     for full_path, local_name in import_pairs:

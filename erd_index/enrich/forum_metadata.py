@@ -17,12 +17,14 @@ __all__ = ["enrich_forum_chunk"]
 
 def _int_or(value: object, default: int = 0) -> int:
     """Coerce *value* to int, returning *default* on failure."""
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (str, float)):
+        try:
+            return int(value)
+        except (ValueError, OverflowError):
+            return default
+    return default
 
 
 def _influence_score(likes: int, views: int, posts_count: int) -> float:

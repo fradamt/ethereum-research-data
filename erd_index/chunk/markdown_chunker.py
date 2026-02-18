@@ -219,18 +219,26 @@ def _unit_to_chunk(unit: ParsedUnit) -> Chunk:
 
 def _int_or(val: object, default: int = 0) -> int:
     """Coerce *val* to int, returning *default* on failure."""
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return default
+    if isinstance(val, int):
+        return val
+    if isinstance(val, (str, float)):
+        try:
+            return int(val)
+        except (ValueError, OverflowError):
+            return default
+    return default
 
 
 def _float_or(val: object, default: float = 0.0) -> float:
     """Coerce *val* to float, returning *default* on failure."""
-    try:
+    if isinstance(val, (int, float)):
         return float(val)
-    except (TypeError, ValueError):
-        return default
+    if isinstance(val, str):
+        try:
+            return float(val)
+        except ValueError:
+            return default
+    return default
 
 
 def _date_to_ts(val: object) -> int:
