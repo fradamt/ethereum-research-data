@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import os
 import ssl
-import sys
 import tempfile
 import time
 import urllib.error
@@ -108,10 +107,20 @@ class DiscourseScraper:
             except urllib.error.HTTPError as exc:
                 if exc.code in (404, 403, 410):
                     return None
-                if exc.code == 429 or exc.code >= 500:
+                if exc.code == 429:
+                    retry_after = exc.headers.get("Retry-After")
+                    if retry_after:
+                        wait = int(retry_after)
+                    else:
+                        wait = self.delay * (2 ** attempt)
+                    print(f"  Rate limited, waiting {wait}s...")
+                    time.sleep(wait)
+                    continue
+                if exc.code >= 500:
                     wait = self.delay * (2 ** attempt)
                     print(f"  HTTP {exc.code} on {path}, retry in {wait:.1f}s …")
-                    time.sleep(wait)
+                    if attempt < self.max_retries - 1:
+                        time.sleep(wait)
                     continue
                 print(f"  HTTP {exc.code} on {path}, not retryable")
                 return None
@@ -121,7 +130,8 @@ class DiscourseScraper:
             except (urllib.error.URLError, OSError) as exc:
                 wait = self.delay * (2 ** attempt)
                 print(f"  Network error on {path}: {exc}, retry in {wait:.1f}s …")
-                time.sleep(wait)
+                if attempt < self.max_retries - 1:
+                    time.sleep(wait)
                 continue
 
         print(f"  FAILED after {self.max_retries} retries: {path}")
@@ -171,8 +181,7 @@ class DiscourseScraper:
         print("  Fetching /categories.json …")
         data = self._fetch_json("/categories.json?include_subcategories=true")
         if not data:
-            print("  FAILED to fetch categories")
-            sys.exit(1)
+            raise RuntimeError("Failed to fetch categories from Discourse API")
         _save_json(dest, data)
         cats = data.get("category_list", {}).get("categories", [])
         print(f"    {len(cats)} categories saved")
@@ -184,20 +193,33 @@ class DiscourseScraper:
     # ------------------------------------------------------------------
 
     def build_index(self, categories: list[dict]) -> dict[str, dict]:
-        """Paginate categories + /latest to build a topic index.
+        """Build or incrementally update the topic index.
+
+        On first run (no index.json), does a full category crawl plus
+        /latest sweep.  On subsequent runs, only sweeps /latest pages
+        until all topic IDs on a page are already known.
 
         Returns ``{topic_id_str: metadata_dict, …}``.
         Saves to raw_dir/index.json.
         """
         dest = self.raw_dir / "index.json"
+
         if dest.exists():
-            print(f"  index.json exists, loading")
-            index = json.loads(dest.read_text())
-            print(f"    {len(index)} topics in index")
+            index: dict[str, dict] = json.loads(dest.read_text())
+            prev_count = len(index)
+            print(f"  index.json exists ({prev_count} topics), checking for new …")
+            index = self._update_index_from_latest(index)
+            new_count = len(index) - prev_count
+            if new_count > 0:
+                _save_json(dest, index)
+                print(f"    Added {new_count} new topics (total {len(index)})")
+            else:
+                print(f"    Index is up to date ({len(index)} topics)")
             return index
 
+        # --- First-time full build ---
         print("  Building topic index …")
-        index: dict[str, dict] = {}
+        index = {}
 
         # Flatten categories including subcategories
         all_cats = []
@@ -235,8 +257,22 @@ class DiscourseScraper:
 
             print(f"      {len(index)} total so far")
 
-        # Also sweep /latest
-        print("    Checking /latest …")
+        # Also sweep /latest for the initial build
+        index = self._update_index_from_latest(index)
+
+        _save_json(dest, index)
+        print(f"    Index saved: {len(index)} topics")
+        return index
+
+    def _update_index_from_latest(self, index: dict[str, dict]) -> dict[str, dict]:
+        """Sweep /latest.json pages and add new topics to *index*.
+
+        Stops paginating when every topic ID on a page is already in the
+        index (topics are returned in reverse chronological order, so
+        hitting a fully-known page means we have caught up).
+        """
+        known_ids = set(index)
+        print("    Sweeping /latest …")
         page = 0
         while True:
             data = self._fetch_json(f"/latest.json?page={page}")
@@ -248,17 +284,22 @@ class DiscourseScraper:
             if not topics:
                 break
 
+            all_known = True
             for t in topics:
                 tid = str(t["id"])
-                if tid not in index:
+                if tid not in known_ids:
+                    all_known = False
+                    known_ids.add(tid)
                     index[tid] = self._topic_meta(t, "")
+
+            if all_known:
+                print(f"      Page {page}: all topics known, stopping")
+                break
 
             if not data.get("topic_list", {}).get("more_topics_url"):
                 break
             page += 1
 
-        _save_json(dest, index)
-        print(f"    Index saved: {len(index)} topics")
         return index
 
     @staticmethod

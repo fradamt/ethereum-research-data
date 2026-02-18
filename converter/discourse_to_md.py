@@ -463,6 +463,23 @@ def safe_filename(topic_id: int, slug: str, max_slug_len: int = 60) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Quick metadata extraction (avoids full HTML→markdown conversion)
+# ---------------------------------------------------------------------------
+
+def _extract_topic_id_slug(path: Path) -> tuple[int, str]:
+    """Read just the topic_id and slug from a topic JSON file.
+
+    This is much cheaper than a full ``convert_topic()`` call because it skips
+    all HTML-to-markdown conversion.  Used by ``convert_all()`` to determine
+    the output filename before deciding whether to run the expensive conversion.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    topic_id: int = data["id"]
+    slug: str = data.get("slug", "topic")
+    return topic_id, slug
+
+
+# ---------------------------------------------------------------------------
 # Converter
 # ---------------------------------------------------------------------------
 
@@ -516,6 +533,24 @@ class DiscourseConverter:
         for path in sorted(topics_dir.iterdir()):
             if path.suffix != ".json":
                 continue
+
+            # Quick check: extract id+slug without full conversion to
+            # determine the output filename cheaply.
+            try:
+                topic_id, slug = _extract_topic_id_slug(path)
+            except Exception as exc:
+                print(f"  Skipping {path.name}: {exc}")
+                skipped += 1
+                continue
+
+            out_path = self.corpus_dir / safe_filename(topic_id, slug)
+
+            # Skip if output already exists (incremental mode)
+            if not force and out_path.exists():
+                skipped += 1
+                continue
+
+            # Full conversion only for new/missing topics
             try:
                 result = self.convert_topic(path)
             except Exception as exc:
@@ -528,12 +563,11 @@ class DiscourseConverter:
                 continue
 
             filename, content = result
-            out_path = self.corpus_dir / filename
 
-            # Skip if output already exists (incremental mode)
-            if not force and out_path.exists():
-                skipped += 1
-                continue
+            if not content.strip():
+                print(f"  Warning: empty output from non-empty input {path.name}")
+
+            out_path = self.corpus_dir / filename
 
             # Preserve enrichment fields from existing file
             content = self._merge_enrichment(out_path, content)
