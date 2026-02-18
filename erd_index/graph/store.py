@@ -57,9 +57,13 @@ def get_connection(db_path: Path | str) -> sqlite3.Connection:
     Row factory is set to ``sqlite3.Row`` for dict-like access.
     """
     conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA foreign_keys = ON")
+    except Exception:
+        conn.close()
+        raise
     return conn
 
 

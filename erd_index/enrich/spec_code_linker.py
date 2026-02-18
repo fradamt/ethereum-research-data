@@ -1,9 +1,13 @@
 """Heuristic spec-to-code linker.
 
 Finds links between EIP specifications and code nodes in the graph DB
-using three heuristic strategies:
+using 2 heuristics in production linking, plus 1 text-based heuristic
+available via ``find_spec_code_links_from_text()``:
 
-1. EIP reference in comments/docstrings (confidence 0.8)
+1. EIP reference in comments/docstrings (confidence 0.8) — text-based,
+   requires chunk text that is not stored in the graph DB.  Exposed via
+   ``find_spec_code_links_from_text()`` for callers that have text available
+   (e.g. during graph building in pipeline.py).
 2. Function name contains EIP number (confidence 0.9)
 3. Test file for EIP (confidence 0.7)
 
@@ -20,7 +24,7 @@ from typing import Any
 
 from erd_index.enrich.eip_refs import extract_eip_refs
 
-__all__ = ["find_spec_code_links"]
+__all__ = ["find_spec_code_links", "find_spec_code_links_from_text"]
 
 log = logging.getLogger(__name__)
 
@@ -262,10 +266,11 @@ def find_spec_code_links(
             best_links[key] = link
 
     for node in code_nodes:
-        # TODO: Heuristic 1 (_heuristic_eip_ref_in_text) is not called here
-        # because chunk text is not available from the graph DB at this point.
-        # It is only used via find_spec_code_links_from_text() during graph
-        # building when text is available.
+        # Note: Heuristic 1 (_heuristic_eip_ref_in_text) is not called here
+        # because chunk text is not stored in graph.db.  It requires the raw
+        # source text, which is only available during graph building.  Use
+        # find_spec_code_links_from_text() from pipeline.py (or similar
+        # callers) when text is at hand.
 
         # Heuristic 2 — symbol name
         for link in _heuristic_symbol_name(node, indexed_eips):

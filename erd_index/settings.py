@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 try:
@@ -129,9 +129,11 @@ def load_settings(
     graph_db = paths_raw.get("graph_db", "data/graph.db")
     state_db = paths_raw.get("state_db", "data/index_state.db")
 
-    # Chunk sizing
+    # Chunk sizing — filter to known fields so unknown TOML keys don't
+    # cause a TypeError in the ChunkSizing constructor.
     cs_raw = raw.get("chunk_sizing", {})
-    chunk_sizing = ChunkSizing(**{k: int(v) for k, v in cs_raw.items()})
+    known_fields = {f.name for f in fields(ChunkSizing)}
+    chunk_sizing = ChunkSizing(**{k: int(v) for k, v in cs_raw.items() if k in known_fields})
 
     # Versions
     ver_raw = raw.get("versions", {})

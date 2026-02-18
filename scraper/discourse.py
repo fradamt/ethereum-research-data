@@ -217,12 +217,25 @@ class DiscourseScraper:
         if dest.exists():
             index: dict[str, dict] = json.loads(dest.read_text())
             prev_count = len(index)
+            # Snapshot metadata to detect updates to existing topics
+            old_meta = {tid: (m.get("posts_count"), m.get("last_posted_at"))
+                        for tid, m in index.items()}
             print(f"  index.json exists ({prev_count} topics), checking for new …")
             index = self._update_index_from_latest(index)
             new_count = len(index) - prev_count
-            if new_count > 0:
+            updated_count = sum(
+                1 for tid, m in index.items()
+                if tid in old_meta
+                and (m.get("posts_count"), m.get("last_posted_at")) != old_meta[tid]
+            )
+            if new_count > 0 or updated_count > 0:
                 _save_json(dest, index)
-                print(f"    Added {new_count} new topics (total {len(index)})")
+                parts = []
+                if new_count > 0:
+                    parts.append(f"{new_count} new")
+                if updated_count > 0:
+                    parts.append(f"{updated_count} updated")
+                print(f"    {', '.join(parts)} topics (total {len(index)})")
             else:
                 print(f"    Index is up to date ({len(index)} topics)")
             return index
@@ -238,7 +251,7 @@ class DiscourseScraper:
             for sub in cat.get("subcategory_list", []):
                 all_cats.append(sub)
 
-        for cat in all_cats:
+        for i, cat in enumerate(all_cats):
             cat_id = cat["id"]
             cat_slug = cat["slug"]
             cat_name = cat["name"]
@@ -271,6 +284,11 @@ class DiscourseScraper:
 
             print(f"      {len(index)} total so far")
 
+            # Periodic save during initial build
+            if (i + 1) % 5 == 0:
+                _save_json(dest, index)
+                print(f"      Checkpoint: {len(index)} topics saved")
+
         # Also sweep /latest for the initial build
         index = self._update_index_from_latest(index)
 
@@ -279,11 +297,14 @@ class DiscourseScraper:
         return index
 
     def _update_index_from_latest(self, index: dict[str, dict]) -> dict[str, dict]:
-        """Sweep /latest.json pages and add new topics to *index*.
+        """Sweep /latest.json pages, adding new topics and updating metadata.
 
-        Stops paginating when every topic ID on a page is already in the
-        index (topics are returned in reverse chronological order, so
-        hitting a fully-known page means we have caught up).
+        For known topics, updates posts_count/last_posted_at so that
+        ``fetch_topics`` can detect topics with new replies and re-fetch them.
+
+        Stops paginating when every topic on a page is already known **and**
+        has unchanged metadata (topics are returned in reverse chronological
+        order, so hitting fully-unchanged pages means we have caught up).
         """
         known_ids = set(index)
         print("    Sweeping /latest …")
@@ -310,6 +331,15 @@ class DiscourseScraper:
                     # discovered topics.  Currently sets category_name="" for
                     # topics found via /latest.
                     index[tid] = self._topic_meta(t, "")
+                else:
+                    # Update metadata for known topics (detect new replies/edits)
+                    old = index.get(tid)
+                    if old:
+                        new_meta = self._topic_meta(t, old.get("category_name", ""))
+                        if (new_meta["posts_count"] != old.get("posts_count")
+                                or new_meta["last_posted_at"] != old.get("last_posted_at")):
+                            all_known = False
+                        index[tid] = new_meta
 
             if all_known:
                 consecutive_all_known += 1
@@ -346,7 +376,8 @@ class DiscourseScraper:
     def fetch_topics(self, index: dict[str, dict]) -> None:
         """Fetch full JSON for every topic in *index*.
 
-        Skips topics whose JSON already exists (incremental).
+        Skips topics whose on-disk JSON already has at least as many posts
+        as the index reports.  Re-fetches topics that gained new replies.
         """
         topic_ids = sorted(index, key=lambda x: int(x))
         total = len(topic_ids)
@@ -356,9 +387,27 @@ class DiscourseScraper:
 
         for tid in topic_ids:
             dest = self.topics_dir / f"{tid}.json"
+            meta = index.get(tid, {})
+
             if dest.exists():
-                skipped += 1
-                continue
+                # Check if topic has new content by comparing posts_count
+                # from the index (updated from /latest) with what we have on disk
+                try:
+                    existing = json.loads(dest.read_text(encoding="utf-8"))
+                    existing_posts = len(
+                        existing.get("post_stream", {}).get("stream", [])
+                    )
+                    index_posts = meta.get("posts_count", 0)
+                    if existing_posts >= index_posts:
+                        skipped += 1
+                        continue
+                    # Topic has new replies — re-fetch
+                    print(
+                        f"  Topic {tid}: {existing_posts} -> {index_posts} posts,"
+                        " re-fetching"
+                    )
+                except (json.JSONDecodeError, OSError):
+                    pass  # Re-fetch on corrupt file
 
             data = self._fetch_full_topic(int(tid))
             self._throttle()

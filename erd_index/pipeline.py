@@ -98,6 +98,7 @@ def ingest_markdown(
         paths_by_source.setdefault(f.source_name, set()).add(f.relative_path)
 
     files_processed = 0
+    files_parsed = 0
     files_skipped = 0
     total_chunks_upserted = 0
     errors = 0
@@ -164,6 +165,8 @@ def ingest_markdown(
                 )
                 files_processed += 1
 
+            files_parsed += 1
+
         except ConnectionError:
             raise  # Meilisearch down — abort entire run
         except Exception:
@@ -171,10 +174,10 @@ def ingest_markdown(
             msg = f"{discovered.source_name}:{discovered.relative_path}"
             error_details.append(msg)
             log.exception("Error processing %s", msg)
-            if errors >= 10 and files_processed == 0:
+            if errors >= 10 and files_parsed == 0:
                 raise RuntimeError(
                     f"Aborting: {errors} consecutive errors with 0 successes. "
-                    "Check Meilisearch connectivity and log output."
+                    "Check log output for details."
                 ) from None
 
     # 6. Clean up stale files (only when processing ALL sources — scoped
@@ -317,7 +320,15 @@ def _cleanup_stale_markdown(
                             row["repository"], row["file_path"])
                 chunk_ids = []
             if chunk_ids:
-                delete_by_ids(settings, chunk_ids)
+                try:
+                    delete_by_ids(settings, chunk_ids)
+                except ConnectionError:
+                    log.error(
+                        "Meilisearch unreachable during stale cleanup; "
+                        "skipping manifest removal for %s:%s to prevent orphans",
+                        row["repository"], row["file_path"],
+                    )
+                    continue  # Don't remove manifest row — docs still in Meili
                 total_deleted += len(chunk_ids)
             remove_indexed_file(state_db, row["repository"], row["file_path"])
             log.info("Removed stale file: %s:%s", row["repository"], row["file_path"])
@@ -365,6 +376,7 @@ def ingest_code(
         paths_by_repo.setdefault(f.repository, set()).add(f.relative_path)
 
     files_processed = 0
+    files_parsed = 0
     files_skipped = 0
     total_chunks_upserted = 0
     errors = 0
@@ -420,6 +432,8 @@ def ingest_code(
                 )
                 files_processed += 1
 
+            files_parsed += 1
+
         except ConnectionError:
             raise  # Meilisearch down — abort entire run
         except Exception:
@@ -427,10 +441,10 @@ def ingest_code(
             msg = f"{discovered.source_name}:{discovered.relative_path}"
             error_details.append(msg)
             log.exception("Error processing %s", msg)
-            if errors >= 10 and files_processed == 0:
+            if errors >= 10 and files_parsed == 0:
                 raise RuntimeError(
                     f"Aborting: {errors} consecutive errors with 0 successes. "
-                    "Check Meilisearch connectivity and log output."
+                    "Check log output for details."
                 ) from None
 
     # 6. Clean up stale files (only when processing ALL repos, not truncated
@@ -565,7 +579,15 @@ def _cleanup_stale_code(
                             row["repository"], row["file_path"])
                 chunk_ids = []
             if chunk_ids:
-                delete_by_ids(settings, chunk_ids)
+                try:
+                    delete_by_ids(settings, chunk_ids)
+                except ConnectionError:
+                    log.error(
+                        "Meilisearch unreachable during stale cleanup; "
+                        "skipping manifest removal for %s:%s to prevent orphans",
+                        row["repository"], row["file_path"],
+                    )
+                    continue  # Don't remove manifest row — docs still in Meili
                 total_deleted += len(chunk_ids)
             remove_indexed_file(state_db, row["repository"], row["file_path"])
             log.info("Removed stale code file: %s:%s", row["repository"], row["file_path"])
@@ -637,6 +659,11 @@ def build_graph(
                 graph_errors += 1
                 graph_error_details.append(discovered.relative_path)
                 log.exception("Graph build: error processing %s", discovered.relative_path)
+                if graph_errors >= 10 and len(all_chunks) == 0:
+                    raise RuntimeError(
+                        f"Aborting graph build: {graph_errors} consecutive errors with 0 chunks. "
+                        "Check parser/chunker code."
+                    ) from None
 
         # Process code files
         code_files = _discover_code_files(settings)
@@ -653,6 +680,11 @@ def build_graph(
                 graph_errors += 1
                 graph_error_details.append(discovered.relative_path)
                 log.exception("Graph build: error processing %s", discovered.relative_path)
+                if graph_errors >= 10 and len(all_chunks) == 0:
+                    raise RuntimeError(
+                        f"Aborting graph build: {graph_errors} consecutive errors with 0 chunks. "
+                        "Check parser/chunker code."
+                    ) from None
 
         # Pass 1: upsert all nodes
         nodes_upserted = 0
@@ -795,7 +827,11 @@ def sync_all(
     """
     phase_errors: list[str] = []
 
-    ingest_markdown(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)
+    try:
+        ingest_markdown(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)
+    except Exception:
+        phase_errors.append("ingest-markdown")
+        log.exception("Markdown ingestion failed; continuing with code ingestion")
 
     try:
         ingest_code(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)

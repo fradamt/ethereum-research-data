@@ -13,6 +13,7 @@ import argparse
 import os
 import shutil
 import sys
+import tempfile
 
 
 def main() -> None:
@@ -47,9 +48,21 @@ def main() -> None:
         src = os.path.join(eips_dir, filename)
         dest = os.path.join(out_dir, filename)
 
-        # Only copy if source is newer or dest doesn't exist
+        # Only copy if source is newer or dest doesn't exist.
+        # Use atomic write (tempfile + os.replace) so a crash mid-copy
+        # never leaves a truncated file that passes the mtime check.
         if not os.path.exists(dest) or os.path.getmtime(src) > os.path.getmtime(dest):
-            shutil.copy2(src, dest)
+            fd, tmp = tempfile.mkstemp(dir=out_dir, suffix=".tmp")
+            try:
+                os.close(fd)
+                shutil.copy2(src, tmp)
+                os.replace(tmp, dest)
+            except BaseException:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+                raise
             copied += 1
         else:
             skipped += 1
@@ -63,7 +76,7 @@ def main() -> None:
                 removed += 1
 
     total = copied + skipped
-    print(f"EIP sync complete:")
+    print("EIP sync complete:")
     print(f"  {total} EIPs in corpus/eips/")
     print(f"  {copied} copied (new/updated)")
     print(f"  {skipped} already up to date")

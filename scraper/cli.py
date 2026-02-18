@@ -24,7 +24,11 @@ def _load_sources(repo_root: Path) -> list[dict]:
         print(f"Error: {path} not found", file=sys.stderr)
         sys.exit(1)
     with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError as exc:
+            print(f"Error: {path} contains invalid JSON: {exc}", file=sys.stderr)
+            sys.exit(1)
     return data.get("sources", [])
 
 

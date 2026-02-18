@@ -44,7 +44,7 @@ def init_state_db(settings: Settings) -> Path:
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     schema_file = Path(__file__).parent / "schema.sql"
-    schema_sql = schema_file.read_text()
+    schema_sql = schema_file.read_text(encoding="utf-8")
 
     con = sqlite3.connect(db_path)
     try:
