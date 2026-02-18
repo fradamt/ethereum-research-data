@@ -24,8 +24,29 @@ immediately or refresh with the latest posts first.
 |-----------|-------------|---------|
 | Python 3.10+ | everything | -- |
 | [uv](https://docs.astral.sh/uv/) | search infrastructure | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| [Meilisearch](https://www.meilisearch.com/docs/learn/getting_started/installation) | search infrastructure | see link |
+| [Meilisearch](https://www.meilisearch.com/docs/learn/getting_started/installation) | search infrastructure | see below |
 | [Ollama](https://ollama.com) + `nomic-embed-text` | hybrid search (optional) | `ollama pull nomic-embed-text` |
+
+### Installing Meilisearch
+
+Pick **one** of these options:
+
+```bash
+# Option A: Binary (macOS)
+brew install meilisearch
+
+# Option B: Binary (Linux / macOS without Homebrew)
+curl -L https://install.meilisearch.com | sh
+# moves ./meilisearch to your PATH, e.g.:
+sudo mv ./meilisearch /usr/local/bin/
+
+# Option C: Docker
+docker run -d --name meilisearch \
+  -p 7700:7700 \
+  -e MEILI_MASTER_KEY=changeme \
+  -v $(pwd)/data/meili:/meili_data \
+  getmeili/meilisearch:latest
+```
 
 ## Quick start
 
@@ -35,8 +56,10 @@ The corpus is included in the repo, so you can index immediately:
 # Install Python dependencies
 uv sync
 
-# Start Meilisearch (pick any key you like)
-meilisearch --master-key=changeme
+# Start Meilisearch (skip if using Docker — it's already running)
+meilisearch --master-key=changeme &
+
+# Set the master key (must match what Meilisearch was started with)
 export MEILI_MASTER_KEY=changeme
 
 # Index the corpus into Meilisearch
