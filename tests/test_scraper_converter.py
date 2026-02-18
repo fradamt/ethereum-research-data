@@ -20,7 +20,6 @@ from converter.discourse_to_md import (
 )
 from scraper.discourse import DiscourseScraper
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -32,7 +31,7 @@ def _make_http_error(
     headers: dict[str, str] | None = None,
 ) -> urllib.error.HTTPError:
     """Build an HTTPError with optional headers (e.g. Retry-After)."""
-    resp = MagicMock(spec=HTTPResponse)
+    MagicMock(spec=HTTPResponse)
     msg = MagicMock()
     # HTTPError stores headers in exc.headers
     err = urllib.error.HTTPError(
