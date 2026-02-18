@@ -103,8 +103,9 @@ def ensure_index(settings: Settings) -> meilisearch.Client:
     else:
         log.debug("Index '%s' schema version %d is current", index_name, current_version)
 
-    # Ensure alias is correct.
-    _update_alias(client, settings.meili.index_alias, index_name)
+    # Note: alias swap is only done during init_index(), not here.
+    # Swapping on every ensure_index() call caused data splits when
+    # sync() called ensure_index() for both md and code ingestion.
     return client
 
 
