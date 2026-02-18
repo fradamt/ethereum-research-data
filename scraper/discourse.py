@@ -507,7 +507,7 @@ class DiscourseScraper:
         post_stream = data.get("post_stream", {})
         all_ids = post_stream.get("stream", [])
         posts = post_stream.get("posts", [])
-        fetched_ids = {p["id"] for p in posts}
+        fetched_ids = {p["id"] for p in posts if "id" in p}
 
         missing = [pid for pid in all_ids if pid not in fetched_ids]
         chunk_size = 20

@@ -145,22 +145,35 @@ def _split_large(
     # Estimate lines per part proportionally.
     total_lines = unit.end_line - unit.start_line + 1
     total_chars = len(unit.text) or 1
-    line_offset = unit.start_line
 
-    for i, part_text in enumerate(parts):
-        part_lines = max(1, int(total_lines * len(part_text) / total_chars))
-        start_line = min(line_offset, unit.end_line)
-        end_line = min(line_offset + part_lines - 1, unit.end_line)
-        line_offset = end_line + 1
+    if total_lines <= 1:
+        # Single-line unit: can't distribute lines, assign all parts
+        # to the same line range.
+        for i, part_text in enumerate(parts):
+            chunk = _unit_to_chunk(unit)
+            chunk.text = part_text
+            chunk.start_line = unit.start_line
+            chunk.end_line = unit.end_line
+            if total > 1:
+                chunk.part_index = i
+                chunk.part_count = total
+            chunks.append(chunk)
+    else:
+        line_offset = unit.start_line
+        for i, part_text in enumerate(parts):
+            part_lines = max(1, int(total_lines * len(part_text) / total_chars))
+            start_line = min(line_offset, unit.end_line)
+            end_line = min(line_offset + part_lines - 1, unit.end_line)
+            line_offset = end_line + 1
 
-        chunk = _unit_to_chunk(unit)
-        chunk.text = part_text
-        chunk.start_line = start_line
-        chunk.end_line = end_line
-        if total > 1:
-            chunk.part_index = i
-            chunk.part_count = total
-        chunks.append(chunk)
+            chunk = _unit_to_chunk(unit)
+            chunk.text = part_text
+            chunk.start_line = start_line
+            chunk.end_line = end_line
+            if total > 1:
+                chunk.part_index = i
+                chunk.part_count = total
+            chunks.append(chunk)
 
     return chunks
 

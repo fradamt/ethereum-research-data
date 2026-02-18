@@ -102,18 +102,31 @@ def _extract_title(body: str) -> str:
 
 
 def _fenced_ranges(text: str) -> list[tuple[int, int]]:
-    """Return (start_offset, end_offset) pairs for fenced code blocks."""
+    """Return (start_offset, end_offset) pairs for fenced code blocks.
+
+    Handles unclosed fences gracefully: an unclosed opener is skipped
+    without consuming subsequent fence markers (so later blocks are
+    still detected).
+    """
+    all_fences = list(_FENCE_RE.finditer(text))
     ranges: list[tuple[int, int]] = []
-    it = _FENCE_RE.finditer(text)
-    for m in it:
+    i = 0
+    while i < len(all_fences):
+        m = all_fences[i]
         fence_char = m.group(1)[0]
         fence_len = len(m.group(1))
         start = m.start()
         # Find matching close fence.
-        for m2 in it:
+        found = False
+        for j in range(i + 1, len(all_fences)):
+            m2 = all_fences[j]
             if m2.group(1)[0] == fence_char and len(m2.group(1)) >= fence_len:
                 ranges.append((start, m2.end()))
+                i = j + 1
+                found = True
                 break
+        if not found:
+            i += 1  # Unclosed fence — skip without consuming later markers
     return ranges
 
 

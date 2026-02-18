@@ -59,6 +59,8 @@ def _parse_python_imports(text: str) -> list[tuple[str, str]]:
 
     for m in _PY_FROM_IMPORT.finditer(text):
         module = m.group(1)
+        if module == "__future__":
+            continue  # __future__ imports are not real dependencies
         names_part = m.group(2)
         # Handle parenthesized imports on single line
         names_part = names_part.strip().strip("()")

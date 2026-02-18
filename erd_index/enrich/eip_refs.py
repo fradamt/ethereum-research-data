@@ -51,9 +51,15 @@ def extract_eip_refs(text: str) -> list[int]:
             if not in_fence:
                 in_fence = True
                 fence_marker = marker_char * marker_len
-            elif stripped.startswith(fence_marker[0] * len(fence_marker)):
-                in_fence = False
-                fence_marker = ""
+            else:
+                # Closing fence: only fence chars (no info string),
+                # at least as long as the opening fence.
+                closing = stripped.rstrip()
+                if (closing
+                        and len(closing) >= len(fence_marker)
+                        and all(c == fence_marker[0] for c in closing)):
+                    in_fence = False
+                    fence_marker = ""
             continue
 
         if in_fence:
