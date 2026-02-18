@@ -216,6 +216,17 @@ class DiscourseScraper:
 
         if dest.exists():
             index: dict[str, dict] = json.loads(dest.read_text())
+
+            # Check if a previous initial build was interrupted mid-crawl.
+            # A complete initial build always ends with a /latest sweep, which
+            # sets _build_complete=True on the index dict (stored as a top-level
+            # key).  Checkpoint saves during category crawling do NOT set this
+            # flag, so a crash mid-build leaves an index without it.
+            if not index.pop("_build_complete", False):
+                print(f"  index.json exists ({len(index)} topics) but initial build "
+                      "was incomplete — resuming full category crawl")
+                return self._resume_build(dest, index, categories)
+
             prev_count = len(index)
             # Snapshot metadata to detect updates to existing topics
             old_meta = {tid: (m.get("posts_count"), m.get("last_posted_at"))
@@ -229,7 +240,7 @@ class DiscourseScraper:
                 and (m.get("posts_count"), m.get("last_posted_at")) != old_meta[tid]
             )
             if new_count > 0 or updated_count > 0:
-                _save_json(dest, index)
+                _save_json(dest, {**index, "_build_complete": True})
                 parts = []
                 if new_count > 0:
                     parts.append(f"{new_count} new")
@@ -292,8 +303,63 @@ class DiscourseScraper:
         # Also sweep /latest for the initial build
         index = self._update_index_from_latest(index)
 
-        _save_json(dest, index)
+        _save_json(dest, {**index, "_build_complete": True})
         print(f"    Index saved: {len(index)} topics")
+        return index
+
+    def _resume_build(
+        self,
+        dest: Path,
+        index: dict[str, dict],
+        categories: list[dict],
+    ) -> dict[str, dict]:
+        """Resume a category crawl after a crash during the initial build.
+
+        Topics already in *index* are kept; only uncrawled categories contribute
+        new topics.  A /latest sweep runs at the end.
+        """
+        all_cats = []
+        for cat in categories:
+            all_cats.append(cat)
+            for sub in cat.get("subcategory_list", []):
+                all_cats.append(sub)
+
+        for i, cat in enumerate(all_cats):
+            cat_id = cat["id"]
+            cat_slug = cat["slug"]
+            cat_name = cat["name"]
+            topic_count = cat.get("topic_count", 0)
+            print(f"    Category: {cat_name} ({topic_count} topics)")
+
+            page = 0
+            while True:
+                data = self._fetch_json(f"/c/{cat_slug}/{cat_id}.json?page={page}")
+                self._throttle()
+                if not data:
+                    break
+
+                topics = data.get("topic_list", {}).get("topics", [])
+                if not topics:
+                    break
+
+                for t in topics:
+                    tid = str(t["id"])
+                    if tid not in index:
+                        index[tid] = self._topic_meta(t, cat_name)
+
+                if not data.get("topic_list", {}).get("more_topics_url"):
+                    break
+                page += 1
+
+            print(f"      {len(index)} total so far")
+
+            if (i + 1) % 5 == 0:
+                _save_json(dest, index)
+                print(f"      Checkpoint: {len(index)} topics saved")
+
+        index = self._update_index_from_latest(index)
+        _save_json(dest, {**index, "_build_complete": True})
+        print(f"    Resumed build complete: {len(index)} topics")
         return index
 
     def _update_index_from_latest(self, index: dict[str, dict]) -> dict[str, dict]:
@@ -398,10 +464,10 @@ class DiscourseScraper:
                         existing.get("post_stream", {}).get("stream", [])
                     )
                     index_posts = meta.get("posts_count", 0)
-                    if existing_posts >= index_posts:
+                    if existing_posts == index_posts:
                         skipped += 1
                         continue
-                    # Topic has new replies — re-fetch
+                    # Topic changed (new replies or moderation) — re-fetch
                     print(
                         f"  Topic {tid}: {existing_posts} -> {index_posts} posts,"
                         " re-fetching"

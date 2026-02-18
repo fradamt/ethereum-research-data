@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import sqlite3
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -32,7 +30,6 @@ from erd_index.pipeline import (
     _cleanup_stale_markdown,
     _stale_chunk_ids,
     build_graph,
-    ingest_code,
     ingest_markdown,
     sync_all,
 )
@@ -393,7 +390,7 @@ class TestDryRunAbortThreshold:
                 side_effect=ValueError("bad file"),
             ),
         ):
-            with pytest.raises(RuntimeError, match="Aborting.*10 consecutive errors"):
+            with pytest.raises(RuntimeError, match=r"Aborting.*10 consecutive errors"):
                 ingest_markdown(settings, dry_run=True)
 
 
@@ -431,7 +428,7 @@ class TestBuildGraphCircuitBreaker:
                 side_effect=Exception("crash"),
             ),
         ):
-            with pytest.raises(RuntimeError, match="Aborting graph build.*10 consecutive"):
+            with pytest.raises(RuntimeError, match=r"Aborting graph build.*10 consecutive"):
                 build_graph(settings)
 
     def test_does_not_abort_if_some_succeed(self, tmp_path: Path) -> None:
@@ -617,7 +614,7 @@ class TestCurateEipsAtomicCopy:
         dest = out_dir / "eip-100.md"
         dest.write_text("# EIP-100 (v1)")
 
-        with patch("shutil.copy2", side_effect=IOError("write fail")):
+        with patch("shutil.copy2", side_effect=OSError("write fail")):
             from scripts.curate_eips import main
 
             with pytest.raises(IOError, match="write fail"):
@@ -738,14 +735,6 @@ class TestScraperIndexCheckpointing:
             for i in range(6)
         ]
 
-        page_data = {
-            "topic_list": {
-                "topics": [{"id": 100 + i, "title": f"Topic {100 + i}", "category_id": i,
-                            "posts_count": 1, "created_at": "", "last_posted_at": "",
-                            "views": 0, "like_count": 0}
-                           for i in range(6)],
-            }
-        }
         # For each category, return topics on page 0 only
         call_count = 0
 
@@ -819,7 +808,7 @@ class TestWaitAndCheckStatusValidation:
             "error": {"message": "invalid document id", "code": "invalid_document_id"},
         }
 
-        with pytest.raises(RuntimeError, match="failed.*invalid document id"):
+        with pytest.raises(RuntimeError, match=r"failed.*invalid document id"):
             _wait_and_check(client, task_uid=2, description="upsert batch")
 
     def test_succeeds_on_succeeded_status(self) -> None:
