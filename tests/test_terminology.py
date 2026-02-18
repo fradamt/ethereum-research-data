@@ -55,7 +55,11 @@ class TestSynonyms:
     def test_known_abbreviations_present(self) -> None:
         """Spot-check that key abbreviations are in the mapping."""
         synonyms = get_ethereum_synonyms()
-        expected = ["ssz", "kzg", "das", "pbs", "mev", "evm", "ffg", "rlp", "eip"]
+        expected = [
+            "ssz", "kzg", "das", "pbs", "mev", "evm", "ffg", "rlp", "eip",
+            "epbs", "focil", "pepc", "aps", "verkle", "snark", "stark",
+            "gasper", "dvt", "lst", "amm", "zkp",
+        ]
         for abbrev in expected:
             assert abbrev in synonyms, f"Abbreviation {abbrev!r} missing from synonyms"
 
@@ -144,8 +148,8 @@ class TestExpandQuery:
         assert "data availability sampling" in result
 
     def test_no_expansion_for_excluded_abbreviations(self) -> None:
-        """Common/short abbreviations (evm, cl, el, blob, eip) should not expand."""
-        for term in ("EVM opcodes", "CL spec", "EL client", "blob gas", "EIP-4844"):
+        """Common/short abbreviations (evm, cl, el, blob, eip, erc, il) should not expand."""
+        for term in ("EVM opcodes", "CL spec", "EL client", "blob gas", "EIP-4844", "ERC-20", "IL design"):
             result = expand_query(term)
             assert result == term, f"Unexpectedly expanded: {term!r} → {result!r}"
 
@@ -189,6 +193,32 @@ class TestExpandQuery:
     def test_peerdas_expands(self) -> None:
         result = expand_query("PeerDAS networking")
         assert "peer data availability sampling" in result
+
+    def test_focil_expands(self) -> None:
+        result = expand_query("FOCIL design")
+        assert "fork-choice enforced inclusion lists" in result
+
+    def test_epbs_expands(self) -> None:
+        result = expand_query("ePBS mechanism")
+        assert "enshrined proposer-builder separation" in result
+
+    def test_verkle_expands(self) -> None:
+        result = expand_query("Verkle tree migration")
+        assert "vector commitment merkle tree" in result
+
+    def test_gasper_expands(self) -> None:
+        result = expand_query("Gasper consensus")
+        assert "ghost and casper combined consensus" in result
+
+    def test_snark_stark_expand(self) -> None:
+        result = expand_query("SNARK vs STARK tradeoffs")
+        assert "succinct non-interactive argument of knowledge" in result
+        assert "scalable transparent argument of knowledge" in result
+
+    def test_bls_expands(self) -> None:
+        """BLS was moved to expandable — should expand now."""
+        result = expand_query("BLS signature aggregation")
+        assert "boneh-lynn-shacham" in result
 
 
 # ===================================================================

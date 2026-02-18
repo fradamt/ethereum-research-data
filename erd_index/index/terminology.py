@@ -26,48 +26,103 @@ _TIMEOUT = 10
 # synonym relationships: the key maps to all values, and each value maps
 # back to the key.
 _ABBREVIATIONS: dict[str, list[str]] = {
+    # --- Serialization & cryptography ---
     "ssz": ["simple serialize", "simpleserialize"],
     "kzg": ["kate polynomial commitment", "kate-zaverucha-goldberg"],
-    "das": ["data availability sampling"],
-    "pbs": ["proposer-builder separation", "proposer builder separation"],
-    "mev": ["maximal extractable value", "miner extractable value"],
-    "ssf": ["single slot finality", "single-slot finality"],
-    "evm": ["ethereum virtual machine"],
-    "bls": ["boneh-lynn-shacham"],
-    "randao": ["random number generation dao"],
-    "cl": ["consensus layer"],
-    "el": ["execution layer"],
-    "peerdas": ["peer data availability sampling"],
-    "lmd-ghost": ["latest message driven ghost"],
-    "ffg": ["friendly finality gadget", "casper ffg"],
     "rlp": ["recursive length prefix"],
     "mpt": ["merkle patricia trie"],
-    "blob": ["binary large object"],
-    "eip": ["ethereum improvement proposal"],
-    "eof": ["evm object format"],
+    "bls": ["boneh-lynn-shacham"],
+    "snark": ["succinct non-interactive argument of knowledge"],
+    "stark": ["scalable transparent argument of knowledge"],
+    "vdf": ["verifiable delay function"],
+    "verkle": ["vector commitment merkle tree", "verkle tree", "verkle trie"],
+    # --- Data availability ---
+    "das": ["data availability sampling"],
+    "peerdas": ["peer data availability sampling"],
+    "danksharding": ["data availability sharding"],
+    # --- Consensus & finality ---
+    "lmd-ghost": ["latest message driven ghost"],
+    "ffg": ["friendly finality gadget", "casper ffg"],
+    "gasper": ["ghost and casper combined consensus"],
+    "ssf": ["single slot finality", "single-slot finality"],
+    "randao": ["random number generation dao"],
+    # --- Block production & MEV ---
+    "pbs": ["proposer-builder separation", "proposer builder separation"],
+    "epbs": ["enshrined proposer-builder separation"],
+    "mev": ["maximal extractable value", "miner extractable value"],
+    "pepc": ["protocol-enforced proposer commitments"],
+    "aps": ["attester-proposer separation"],
+    "focil": ["fork-choice enforced inclusion lists"],
     "il": ["inclusion list"],
+    # --- Protocol layers & governance ---
+    "evm": ["ethereum virtual machine"],
+    "cl": ["consensus layer"],
+    "el": ["execution layer"],
+    "eip": ["ethereum improvement proposal"],
+    "erc": ["ethereum request for comments"],
+    "eof": ["evm object format"],
+    "blob": ["binary large object"],
+    # --- Staking & validators ---
+    "dvt": ["distributed validator technology"],
+    # --- Zero-knowledge ---
+    "zkp": ["zero knowledge proof"],
+    "zk-snark": ["zero knowledge succinct non-interactive argument of knowledge"],
+    "zk-stark": ["zero knowledge scalable transparent argument of knowledge"],
+    # --- DeFi / L2 ---
+    "amm": ["automated market maker"],
+    "lst": ["liquid staking token"],
 }
 
 # Compound terms that the Meilisearch tokenizer should treat as single tokens.
 _DICTIONARY: list[str] = [
+    # Sharding & data availability
     "proto-danksharding",
     "danksharding",
     "proto-dank-sharding",
-    "single-slot-finality",
-    "proposer-builder-separation",
     "data-availability-sampling",
+    "peer-data-availability-sampling",
+    # Consensus & finality
+    "single-slot-finality",
+    "lmd-ghost",
+    "casper-ffg",
+    # Block production & MEV
+    "proposer-builder-separation",
+    "enshrined-proposer-builder-separation",
+    "mev-boost",
+    "fork-choice-enforced-inclusion-lists",
+    "inclusion-list",
+    "attester-proposer-separation",
+    "maximal-extractable-value",
+    "protocol-enforced-proposer-commitments",
+    # Trees & state
     "verkle-tree",
     "verkle-trie",
+    "merkle-patricia-trie",
+    "state-expiry",
+    # Infrastructure
     "beacon-chain",
     "execution-layer",
     "consensus-layer",
-    "state-expiry",
     "account-abstraction",
-    "maximal-extractable-value",
+    "distributed-validator-technology",
+    "liquid-staking-token",
+    # Zero-knowledge
+    "zk-snark",
+    "zk-stark",
+    "zero-knowledge-proof",
+    # Serialization
+    "simple-serialize",
+    "recursive-length-prefix",
+    # Common EIP references
     "eip-4844",
     "eip-1559",
     "eip-4788",
     "eip-7594",
+    "eip-4337",
+    "eip-7702",
+    "eip-7251",
+    "eip-6110",
+    "eip-7002",
 ]
 
 
@@ -99,11 +154,23 @@ def get_ethereum_dictionary() -> list[str]:
 # ---------------------------------------------------------------------------
 
 # Abbreviations that are safe to expand in queries.  Excludes short or
-# ambiguous terms (cl, el, il, blob, eip, evm, bls) that could match
-# non-Ethereum contexts or add noise to common queries.
+# ambiguous terms (cl, el, il, blob, eip, erc, evm) that are either too
+# common in our corpus or could match non-Ethereum contexts.
 _EXPANDABLE: frozenset[str] = frozenset({
-    "ssz", "kzg", "das", "pbs", "mev", "ssf", "peerdas",
-    "lmd-ghost", "ffg", "rlp", "mpt", "eof", "randao",
+    # Serialization & crypto
+    "ssz", "kzg", "rlp", "mpt", "bls", "snark", "stark", "vdf", "verkle",
+    # Data availability
+    "das", "peerdas", "danksharding",
+    # Consensus & finality
+    "lmd-ghost", "ffg", "gasper", "ssf", "randao",
+    # Block production & MEV
+    "pbs", "epbs", "mev", "pepc", "aps", "focil",
+    # Protocol
+    "eof", "dvt",
+    # Zero-knowledge
+    "zkp", "zk-snark", "zk-stark",
+    # DeFi
+    "amm", "lst",
 })
 
 _TOKEN_RE = re.compile(r"[\w-]+")
