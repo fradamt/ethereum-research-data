@@ -25,10 +25,12 @@ Prerequisites:
 
 Usage::
 
-    uv run python scripts/batch_embed.py --setup       # configure + embed
-    uv run python scripts/batch_embed.py --resume       # continue from checkpoint
-    uv run python scripts/batch_embed.py --dry-run      # preview without changes
-    uv run python scripts/batch_embed.py --setup-only   # configure, don't embed
+    uv run python scripts/batch_embed.py --setup            # configure + embed
+    uv run python scripts/batch_embed.py --setup --finalize # configure + embed + enable queries
+    uv run python scripts/batch_embed.py --resume            # continue from checkpoint
+    uv run python scripts/batch_embed.py --dry-run           # preview without changes
+    uv run python scripts/batch_embed.py --setup-only        # configure embedder only
+    uv run python scripts/batch_embed.py --finalize-only     # switch to REST embedder only
 
 Configuration precedence: CLI flags > environment variables > built-in defaults.
 
@@ -495,6 +497,16 @@ def run_batch_embed(
 # ---------------------------------------------------------------------------
 
 
+def _wait_for_indexing(meili_url: str, index: str) -> None:
+    """Wait for any active indexing to finish (up to 10 minutes)."""
+    for _ in range(120):
+        stats = meili_get(meili_url, f"/indexes/{index}/stats")
+        if not stats.get("isIndexing"):
+            return
+        log.info("Waiting for indexing to finish...")
+        time.sleep(5)
+
+
 def setup_user_provided(
     meili_url: str = DEFAULT_MEILI_URL,
     index: str = DEFAULT_INDEX,
@@ -507,14 +519,7 @@ def setup_user_provided(
     then waits for the settings update task to succeed.
     """
     log.info("Setting embedder to userProvided (dims=%d) on %s...", dimensions, index)
-
-    # Wait for active indexing to finish
-    for _ in range(120):  # 10 minutes max
-        stats = meili_get(meili_url, f"/indexes/{index}/stats")
-        if not stats.get("isIndexing"):
-            break
-        log.info("Waiting for indexing to finish...")
-        time.sleep(5)
+    _wait_for_indexing(meili_url, index)
 
     body = {
         "embedders": {
@@ -530,6 +535,55 @@ def setup_user_provided(
         log.info("Embedder set to userProvided (task %d)", task["uid"])
     else:
         log.error("Failed to update embedder: %s", task.get("error"))
+        sys.exit(1)
+
+
+def finalize_rest_embedder(
+    meili_url: str = DEFAULT_MEILI_URL,
+    index: str = DEFAULT_INDEX,
+    embedder_name: str = DEFAULT_EMBEDDER_NAME,
+    model: str = DEFAULT_MODEL,
+    ollama_url: str = DEFAULT_OLLAMA_URL,
+    dimensions: int = 768,
+) -> None:
+    """Switch the embedder from ``userProvided`` to ``rest`` for query-time embedding.
+
+    After batch embedding, documents already have stored vectors.  This step
+    configures Meilisearch to call Ollama directly for search queries, so
+    ``--hybrid`` search works without the client providing a vector.
+
+    The ``rest`` embedder is configured to call Ollama's ``/api/embed``
+    endpoint.  When running in Docker, set *ollama_url* to
+    ``http://ollama:11434/api/embed`` (the Docker service name) so
+    Meilisearch can reach Ollama over the Docker network.
+    """
+    log.info(
+        "Switching embedder to REST (url=%s, model=%s, dims=%d)...",
+        ollama_url, model, dimensions,
+    )
+    _wait_for_indexing(meili_url, index)
+
+    body = {
+        "embedders": {
+            embedder_name: {
+                "source": "rest",
+                "url": ollama_url,
+                "dimensions": dimensions,
+                "request": {"model": model, "input": ["{{text}}", "{{..}}"]},
+                "response": {"embeddings": ["{{embedding}}", "{{..}}"]},
+                "documentTemplate": (
+                    "{% if doc.title %}{{ doc.title }} {% endif %}{{ doc.text }}"
+                ),
+                "documentTemplateMaxBytes": 8000,
+            }
+        }
+    }
+    task_resp = meili_patch(meili_url, f"/indexes/{index}/settings", body)
+    task = wait_for_task(meili_url, task_resp["taskUid"], timeout=600)
+    if task["status"] == "succeeded":
+        log.info("Embedder switched to REST (task %d)", task["uid"])
+    else:
+        log.error("Failed to switch embedder: %s", task.get("error"))
         sys.exit(1)
 
 
@@ -567,10 +621,12 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  %(prog)s --setup                    # configure embedder + embed all\n"
-            "  %(prog)s --resume                   # continue from last checkpoint\n"
-            "  %(prog)s --dry-run                  # preview without changes\n"
-            "  %(prog)s --setup-only               # configure embedder only\n"
+            "  %(prog)s --setup --finalize          # full pipeline: embed + enable queries\n"
+            "  %(prog)s --setup                     # configure embedder + embed all\n"
+            "  %(prog)s --finalize-only             # switch to REST embedder (query-time)\n"
+            "  %(prog)s --resume                    # continue from last checkpoint\n"
+            "  %(prog)s --dry-run                   # preview without changes\n"
+            "  %(prog)s --setup-only                # configure embedder only\n"
             "  %(prog)s --model nomic-embed-text    # use a different model\n"
         ),
     )
@@ -629,6 +685,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Set embedder to userProvided and exit (no embedding)",
     )
     parser.add_argument(
+        "--finalize", action="store_true",
+        help="After embedding, switch embedder to REST for query-time embedding",
+    )
+    parser.add_argument(
+        "--finalize-only", action="store_true",
+        help="Switch embedder to REST and exit (no embedding)",
+    )
+    parser.add_argument(
+        "--embedder-url",
+        default=None,
+        help=(
+            "Ollama URL for the REST embedder (used with --finalize). "
+            "Defaults to --ollama-url. For Docker, use http://ollama:11434/api/embed"
+        ),
+    )
+    parser.add_argument(
         "--asymmetric", action="store_true",
         help="Use asymmetric prefixes (title: X | text: Y) for embeddinggemma",
     )
@@ -653,6 +725,15 @@ def main(argv: list[str] | None = None) -> None:
     signal.signal(signal.SIGINT, _request_shutdown)
     signal.signal(signal.SIGTERM, _request_shutdown)
 
+    embedder_url = args.embedder_url or args.ollama_url
+
+    if args.finalize_only:
+        finalize_rest_embedder(
+            meili_url=args.meili_url, index=args.index,
+            model=args.model, ollama_url=embedder_url,
+        )
+        return
+
     if args.setup or args.setup_only:
         setup_user_provided(meili_url=args.meili_url, index=args.index)
         if args.setup_only:
@@ -670,6 +751,12 @@ def main(argv: list[str] | None = None) -> None:
         dry_run=args.dry_run,
         asymmetric=args.asymmetric,
     )
+
+    if args.finalize:
+        finalize_rest_embedder(
+            meili_url=args.meili_url, index=args.index,
+            model=args.model, ollama_url=embedder_url,
+        )
 
 
 if __name__ == "__main__":
