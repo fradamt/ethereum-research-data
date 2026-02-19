@@ -81,6 +81,14 @@ name = "eips"
 path = "../EIPs/EIPS"
 include = ["eip-*.md"]
 
+# Personal vault (Obsidian) — indexed from iCloud path, not copied.
+# Excluded: attachments (binary), .obsidian (config), claude-files (session notes).
+[[corpus_sources]]
+name = "vault"
+path = "/Users/francesco/Library/Mobile Documents/iCloud~md~obsidian/Documents/vault"
+include = ["**/*.md", "**/*.pdf"]
+exclude = ["CLAUDE.md", "AGENTS.md", "attachments/**", ".obsidian/**", "claude-files/**", "ethresearch/**", "ethresearch-fradamt/**", "ethresearch-vbuterin/**"]
+
 # To index your own markdown files, add a corpus_sources entry:
 # [[corpus_sources]]
 # name = "my-notes"
