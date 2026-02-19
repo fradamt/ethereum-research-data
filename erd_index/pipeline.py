@@ -34,6 +34,7 @@ from erd_index.index.writer import batch_upsert, delete_by_ids, get_index_stats
 from erd_index.models import Chunk, SourceKind
 from erd_index.parse import parse_markdown
 from erd_index.parse.go_parser import parse_go_file
+from erd_index.parse.pdf_parser import parse_pdf_file
 from erd_index.parse.py_parser import parse_python_file
 from erd_index.parse.rust_parser import parse_rust_file
 from erd_index.state.manifest_db import (
@@ -341,6 +342,184 @@ def _cleanup_stale_markdown(
             remove_indexed_file(state_db, row["repository"], row["file_path"])
             log.info("Removed stale file: %s:%s", row["repository"], row["file_path"])
     return total_deleted
+
+
+# ---------------------------------------------------------------------------
+# PDF ingestion
+# ---------------------------------------------------------------------------
+
+
+def ingest_pdf(
+    settings: Settings,
+    *,
+    changed_only: bool = False,
+    source_name: str | None = None,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> None:
+    """Ingest PDF files from corpus sources."""
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    state_db = init_state_db(settings)
+
+    if not dry_run:
+        ensure_index(settings)
+
+    run_id = start_run(state_db, "ingest-pdf")
+
+    files = _discover_pdf_files(settings, source_name=source_name)
+    log.info("Discovered %d PDF file(s)", len(files))
+
+    paths_by_source: dict[str, set[str]] = {}
+    for f in files:
+        paths_by_source.setdefault(f.source_name, set()).add(f.relative_path)
+
+    files_processed = 0
+    files_parsed = 0
+    files_skipped = 0
+    total_chunks_upserted = 0
+    chunks_deleted = 0
+    errors = 0
+    consecutive_errors = 0
+    error_details: list[str] = []
+
+    try:
+        for discovered in files:
+            if changed_only and not is_file_changed(
+                state_db,
+                repository=discovered.repository or discovered.source_name,
+                file_path=discovered.relative_path,
+                size_bytes=discovered.size_bytes,
+                mtime_ns=discovered.mtime_ns,
+                parser_version=settings.parser_version,
+                chunker_version=settings.chunker_version,
+            ):
+                files_skipped += 1
+                continue
+
+            try:
+                chunks, chunk_ids = _process_pdf_file(discovered, settings)
+                repo_key = discovered.repository or discovered.source_name
+
+                if not dry_run:
+                    if chunks:
+                        documents = [
+                            chunk_to_document(c, settings.schema_version) for c in chunks
+                        ]
+                        batch_upsert(settings, documents)
+                        total_chunks_upserted += len(documents)
+
+                    stale = _stale_chunk_ids(
+                        state_db, repo_key, discovered.relative_path, chunk_ids,
+                    )
+                    if stale:
+                        delete_by_ids(settings, stale)
+
+                    file_hash = compute_file_hash(discovered.absolute_path)
+                    upsert_indexed_file(
+                        state_db,
+                        repository=repo_key,
+                        file_path=discovered.relative_path,
+                        source_name=discovered.source_name,
+                        language=discovered.language,
+                        size_bytes=discovered.size_bytes,
+                        mtime_ns=discovered.mtime_ns,
+                        file_hash=file_hash,
+                        parser_version=settings.parser_version,
+                        chunker_version=settings.chunker_version,
+                        chunk_ids_json=json.dumps(chunk_ids),
+                    )
+                    files_processed += 1
+
+                files_parsed += 1
+                consecutive_errors = 0
+
+            except ConnectionError as exc:
+                errors += 1
+                error_details.append(f"ConnectionError: {exc}")
+                raise
+            except Exception:
+                errors += 1
+                consecutive_errors += 1
+                msg = f"{discovered.source_name}:{discovered.relative_path}"
+                error_details.append(msg)
+                log.exception("Error processing %s", msg)
+                if consecutive_errors >= 10:
+                    raise RuntimeError(
+                        f"Aborting: {consecutive_errors} consecutive errors."
+                    ) from None
+
+    finally:
+        finish_run(
+            state_db,
+            run_id,
+            files_processed=files_processed,
+            files_skipped=files_skipped,
+            chunks_upserted=total_chunks_upserted,
+            chunks_deleted=chunks_deleted,
+            errors=errors,
+            error_details=error_details or None,
+        )
+
+    log.info(
+        "ingest-pdf complete: %d processed, %d skipped, %d chunks upserted, "
+        "%d chunks deleted, %d errors",
+        files_processed,
+        files_skipped,
+        total_chunks_upserted,
+        chunks_deleted,
+        errors,
+    )
+
+
+def _discover_pdf_files(
+    settings: Settings,
+    *,
+    source_name: str | None = None,
+) -> list[DiscoveredFile]:
+    """Walk sources and filter to PDF corpus files only."""
+    files: list[DiscoveredFile] = []
+    for f in walk_sources(settings):
+        if f.repository:
+            continue
+        if f.language != "pdf":
+            continue
+        if source_name and f.source_name != source_name:
+            continue
+        files.append(f)
+    return files
+
+
+def _process_pdf_file(
+    discovered: DiscoveredFile,
+    settings: Settings,
+) -> tuple[list[Chunk], list[str]]:
+    """Parse, chunk, and enrich a single PDF file.
+
+    Returns (chunks, chunk_ids).
+    """
+    units = parse_pdf_file(
+        discovered.absolute_path,
+        source_name=discovered.source_name,
+        repository=discovered.repository,
+    )
+
+    # Reuse the markdown chunker -- ParsedUnits from PDFs are structurally
+    # identical to those from markdown (heading-split sections).
+    chunks = chunk_parsed_units(units, settings.chunk_sizing)
+
+    for chunk in chunks:
+        eip_refs = extract_eip_refs(chunk.text)
+        if eip_refs:
+            chunk.mentions_eips = eip_refs
+
+    # Override path to use relative_path (parser sets absolute)
+    for chunk in chunks:
+        chunk.path = discovered.relative_path
+
+    chunk_ids = [sanitize_chunk_id(c.chunk_id) for c in chunks]
+    return chunks, chunk_ids
 
 
 # ---------------------------------------------------------------------------
@@ -847,7 +1026,13 @@ def sync_all(
         ingest_markdown(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)
     except Exception:
         phase_errors.append("ingest-markdown")
-        log.exception("Markdown ingestion failed; continuing with code ingestion")
+        log.exception("Markdown ingestion failed; continuing with PDF ingestion")
+
+    try:
+        ingest_pdf(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)
+    except Exception:
+        phase_errors.append("ingest-pdf")
+        log.exception("PDF ingestion failed; continuing with code ingestion")
 
     try:
         ingest_code(settings, changed_only=changed_only, dry_run=dry_run, verbose=verbose)

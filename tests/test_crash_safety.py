@@ -581,6 +581,7 @@ class TestSyncAllPhaseIsolation:
                 "erd_index.pipeline.ingest_markdown",
                 side_effect=RuntimeError("md exploded"),
             ),
+            patch("erd_index.pipeline.ingest_pdf"),
             patch("erd_index.pipeline.ingest_code", side_effect=_mock_ingest_code),
             patch("erd_index.pipeline.build_graph"),
             patch("erd_index.pipeline.link_specs"),
@@ -600,6 +601,10 @@ class TestSyncAllPhaseIsolation:
                 side_effect=RuntimeError("md fail"),
             ),
             patch(
+                "erd_index.pipeline.ingest_pdf",
+                side_effect=RuntimeError("pdf fail"),
+            ),
+            patch(
                 "erd_index.pipeline.ingest_code",
                 side_effect=RuntimeError("code fail"),
             ),
@@ -617,6 +622,7 @@ class TestSyncAllPhaseIsolation:
 
             msg = str(exc_info.value)
             assert "ingest-markdown" in msg
+            assert "ingest-pdf" in msg
             assert "ingest-code" in msg
             assert "build-graph" in msg
             assert "link-specs" in msg
@@ -627,6 +633,7 @@ class TestSyncAllPhaseIsolation:
 
         with (
             patch("erd_index.pipeline.ingest_markdown"),
+            patch("erd_index.pipeline.ingest_pdf"),
             patch("erd_index.pipeline.ingest_code"),
             patch("erd_index.pipeline.build_graph"),
             patch("erd_index.pipeline.link_specs"),
@@ -640,6 +647,7 @@ class TestSyncAllPhaseIsolation:
 
         with (
             patch("erd_index.pipeline.ingest_markdown") as mock_md,
+            patch("erd_index.pipeline.ingest_pdf") as mock_pdf,
             patch("erd_index.pipeline.ingest_code") as mock_code,
             patch("erd_index.pipeline.build_graph") as mock_graph,
             patch("erd_index.pipeline.link_specs") as mock_link,
@@ -647,6 +655,7 @@ class TestSyncAllPhaseIsolation:
             sync_all(settings, dry_run=True)
 
         mock_md.assert_called_once()
+        mock_pdf.assert_called_once()
         mock_code.assert_called_once()
         mock_graph.assert_not_called()
         mock_link.assert_not_called()
