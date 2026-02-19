@@ -197,8 +197,7 @@ def embed_texts(
             embeddings = result.get("embeddings")
             if not embeddings or len(embeddings) != len(texts):
                 raise ValueError(
-                    f"Expected {len(texts)} embeddings, got "
-                    f"{len(embeddings) if embeddings else 0}"
+                    f"Expected {len(texts)} embeddings, got {len(embeddings) if embeddings else 0}"
                 )
             return embeddings
         except urllib.error.HTTPError as exc:
@@ -213,7 +212,10 @@ def embed_texts(
         wait = _RETRY_BACKOFF_BASE * (2**attempt)
         log.warning(
             "Ollama request failed (%s); retry %d/%d in %.1fs",
-            last_exc, attempt + 1, retry_count, wait,
+            last_exc,
+            attempt + 1,
+            retry_count,
+            wait,
         )
         time.sleep(wait)
 
@@ -349,7 +351,8 @@ def run_batch_embed(
         ckpt = load_checkpoint(checkpoint_dir, index)
         log.info(
             "Resuming from checkpoint: offset=%d, embedded=%d",
-            ckpt["offset"], ckpt["embedded"],
+            ckpt["offset"],
+            ckpt["embedded"],
         )
     else:
         ckpt = {"offset": 0, "embedded": 0, "failed_batches": [], "failed_docs": 0}
@@ -382,14 +385,23 @@ def run_batch_embed(
             avg_len = sum(len(t) for t in texts) / len(texts) if texts else 0
             log.info(
                 "[DRY RUN] Batch %d-%d: %d docs, avg text len %.0f chars",
-                offset, offset + len(docs), len(docs), avg_len,
+                offset,
+                offset + len(docs),
+                len(docs),
+                avg_len,
             )
             offset += len(docs)
             embedded += len(docs)
-            save_checkpoint(checkpoint_dir, index, {
-                "offset": offset, "embedded": embedded,
-                "failed_batches": failed_batches, "failed_docs": failed_docs,
-            })
+            save_checkpoint(
+                checkpoint_dir,
+                index,
+                {
+                    "offset": offset,
+                    "embedded": embedded,
+                    "failed_batches": failed_batches,
+                    "failed_docs": failed_docs,
+                },
+            )
             continue
 
         # Embed in sub-batches via Ollama
@@ -408,7 +420,9 @@ def run_batch_embed(
             except Exception as exc:
                 log.warning(
                     "Sub-batch %d-%d failed: %s — retrying individually",
-                    offset + i, offset + i + len(sub_texts), exc,
+                    offset + i,
+                    offset + i + len(sub_texts),
+                    exc,
                 )
                 for j, (text, doc_id) in enumerate(zip(sub_texts, sub_ids, strict=True)):
                     try:
@@ -418,9 +432,16 @@ def run_batch_embed(
                         log.error("Doc %s failed: %s", doc_id, exc2)
                         batch_failures += 1
 
-        # Push vectors to Meilisearch
+        # Push vectors to Meilisearch.  Use the explicit format with
+        # regenerate=false so vectors survive the userProvided→REST switch
+        # without triggering re-embedding (Meilisearch v1.9+).
         updates = [
-            {"id": doc["id"], "_vectors": {embedder_name: emb}}
+            {
+                "id": doc["id"],
+                "_vectors": {
+                    embedder_name: {"embeddings": [emb], "regenerate": False},
+                },
+            }
             for doc, emb in zip(docs, all_embeddings, strict=True)
             if emb is not None
         ]
@@ -432,7 +453,8 @@ def run_batch_embed(
                 if task["status"] != "succeeded":
                     log.error(
                         "Document update task %d: %s",
-                        task_resp["taskUid"], task.get("error"),
+                        task_resp["taskUid"],
+                        task.get("error"),
                     )
                     failed_batches.append({"offset": offset, "error": str(task.get("error"))})
             except Exception as exc:
@@ -445,10 +467,16 @@ def run_batch_embed(
         offset += len(docs)
 
         # Atomic checkpoint
-        save_checkpoint(checkpoint_dir, index, {
-            "offset": offset, "embedded": embedded,
-            "failed_batches": failed_batches, "failed_docs": failed_docs,
-        })
+        save_checkpoint(
+            checkpoint_dir,
+            index,
+            {
+                "offset": offset,
+                "embedded": embedded,
+                "failed_batches": failed_batches,
+                "failed_docs": failed_docs,
+            },
+        )
 
         # Progress report
         pct = offset / total * 100
@@ -458,10 +486,16 @@ def run_batch_embed(
         log.info(
             "Batch %d-%d: %d ok, %d failed (%.1fs) | "
             "Total: %d/%d (%.1f%%) | %.0f docs/s | ETA %.0fm",
-            offset - len(docs), offset,
-            len(updates), batch_failures, batch_elapsed,
-            offset, total, pct,
-            rate, eta / 60,
+            offset - len(docs),
+            offset,
+            len(updates),
+            batch_failures,
+            batch_elapsed,
+            offset,
+            total,
+            pct,
+            rate,
+            eta / 60,
         )
 
     # -- Summary ------------------------------------------------------------
@@ -477,14 +511,19 @@ def run_batch_embed(
 
     if _shutdown_requested:
         log.info(
-            "Stopped at offset %d/%d. %d embedded, %d failed. "
-            "Resume with --resume.",
-            offset, total, embedded, failed_docs,
+            "Stopped at offset %d/%d. %d embedded, %d failed. Resume with --resume.",
+            offset,
+            total,
+            embedded,
+            failed_docs,
         )
     else:
         log.info(
             "Done. %d embedded, %d failed docs, %d batch errors. Took %.1fm",
-            embedded, failed_docs, len(failed_batches), elapsed / 60,
+            embedded,
+            failed_docs,
+            len(failed_batches),
+            elapsed / 60,
         )
     if failed_batches:
         log.warning("Failed batch offsets: %s", [b["offset"] for b in failed_batches])
@@ -507,6 +546,70 @@ def _wait_for_indexing(meili_url: str, index: str) -> None:
         time.sleep(5)
 
 
+def _find_vectorless_doc_ids(
+    meili_url: str,
+    index: str,
+    embedder_name: str,
+    page_size: int = 500,
+) -> list[str]:
+    """Scan the index for documents that lack vectors for *embedder_name*.
+
+    Returns a list of document IDs.  Uses ``retrieveVectors=true`` to inspect
+    vector state, processing one page at a time to limit memory usage.
+    """
+    vectorless: list[str] = []
+    offset = 0
+    while True:
+        result = meili_get(
+            meili_url,
+            f"/indexes/{index}/documents",
+            {
+                "offset": str(offset),
+                "limit": str(page_size),
+                "fields": "id",
+                "retrieveVectors": "true",
+            },
+        )
+        docs = result["results"]
+        if not docs:
+            break
+        for doc in docs:
+            vectors = doc.get("_vectors", {}).get(embedder_name, {})
+            embeddings = vectors.get("embeddings", [])
+            if not embeddings:
+                vectorless.append(doc["id"])
+        offset += len(docs)
+        if offset % 5000 == 0:
+            log.info("  scanned %d docs, found %d without vectors...", offset, len(vectorless))
+        if len(docs) < page_size:
+            break
+    return vectorless
+
+
+def _opt_out_docs(
+    meili_url: str,
+    index: str,
+    embedder_name: str,
+    doc_ids: list[str],
+    batch_size: int = 1000,
+) -> None:
+    """Set ``_vectors.{embedder_name}: null`` for the given document IDs.
+
+    This opts the documents out of embedding validation so that
+    ``userProvided`` can be set even when some documents lack vectors.
+    The batch embed loop will later overwrite these null vectors with
+    real embeddings.
+    """
+    for i in range(0, len(doc_ids), batch_size):
+        batch = doc_ids[i : i + batch_size]
+        updates = [{"id": did, "_vectors": {embedder_name: None}} for did in batch]
+        task_resp = meili_put(meili_url, f"/indexes/{index}/documents", updates)
+        task = wait_for_task(meili_url, task_resp["taskUid"], timeout=120)
+        if task["status"] != "succeeded":
+            log.warning("Opt-out batch %d failed: %s", i, task.get("error"))
+    log.info("Opted out %d documents", len(doc_ids))
+
+
 def setup_user_provided(
     meili_url: str = DEFAULT_MEILI_URL,
     index: str = DEFAULT_INDEX,
@@ -517,9 +620,24 @@ def setup_user_provided(
 
     Waits for any active indexing to finish before applying the change,
     then waits for the settings update task to succeed.
+
+    If the initial attempt fails because some documents lack vectors,
+    automatically scans for and opts out those documents, then retries.
     """
     log.info("Setting embedder to userProvided (dims=%d) on %s...", dimensions, index)
     _wait_for_indexing(meili_url, index)
+
+    # Check current state — skip if already userProvided
+    embedders = meili_get(meili_url, f"/indexes/{index}/settings/embedders")
+    current = embedders.get(embedder_name)
+    if current and current.get("source") == "userProvided":
+        current_dims = current.get("dimensions")
+        if current_dims == dimensions:
+            log.info("Embedder already set to userProvided (dims=%d) — skipping", dimensions)
+            return
+        log.info(
+            "Embedder is userProvided but dims=%s, need %d — updating", current_dims, dimensions
+        )
 
     body = {
         "embedders": {
@@ -531,10 +649,41 @@ def setup_user_provided(
     }
     task_resp = meili_patch(meili_url, f"/indexes/{index}/settings", body)
     task = wait_for_task(meili_url, task_resp["taskUid"], timeout=300)
+
     if task["status"] == "succeeded":
         log.info("Embedder set to userProvided (task %d)", task["uid"])
+        return
+
+    # Check if it failed due to missing vectors
+    error = task.get("error", {})
+    error_msg = str(error.get("message", ""))
+    if "vector" not in error_msg.lower():
+        log.error("Failed to set userProvided: %s", error)
+        sys.exit(1)
+
+    # Scan for vectorless docs and opt them out
+    log.info("Some documents lack vectors — scanning to opt them out...")
+    vectorless = _find_vectorless_doc_ids(meili_url, index, embedder_name)
+
+    if not vectorless:
+        log.error("No vectorless docs found but setting failed: %s", error)
+        sys.exit(1)
+
+    log.info("Found %d documents without vectors — opting out...", len(vectorless))
+    _opt_out_docs(meili_url, index, embedder_name, vectorless)
+    _wait_for_indexing(meili_url, index)
+
+    # Retry
+    task_resp = meili_patch(meili_url, f"/indexes/{index}/settings", body)
+    task = wait_for_task(meili_url, task_resp["taskUid"], timeout=300)
+    if task["status"] == "succeeded":
+        log.info(
+            "Embedder set to userProvided after opting out %d docs (task %d)",
+            len(vectorless),
+            task["uid"],
+        )
     else:
-        log.error("Failed to update embedder: %s", task.get("error"))
+        log.error("Still failed after opt-out: %s", task.get("error"))
         sys.exit(1)
 
 
@@ -545,6 +694,7 @@ def finalize_rest_embedder(
     model: str = DEFAULT_MODEL,
     ollama_url: str = DEFAULT_OLLAMA_URL,
     dimensions: int = 768,
+    asymmetric: bool = False,
 ) -> None:
     """Switch the embedder from ``userProvided`` to ``rest`` for query-time embedding.
 
@@ -552,16 +702,31 @@ def finalize_rest_embedder(
     configures Meilisearch to call Ollama directly for search queries, so
     ``--hybrid`` search works without the client providing a vector.
 
+    When *asymmetric* is ``True``, the ``documentTemplate`` uses the
+    embeddinggemma prefix format (``title: X | text: Y``) so that any new
+    documents auto-embedded by Meilisearch match the batch-embedded format.
+
     The ``rest`` embedder is configured to call Ollama's ``/api/embed``
     endpoint.  When running in Docker, set *ollama_url* to
     ``http://ollama:11434/api/embed`` (the Docker service name) so
     Meilisearch can reach Ollama over the Docker network.
     """
     log.info(
-        "Switching embedder to REST (url=%s, model=%s, dims=%d)...",
-        ollama_url, model, dimensions,
+        "Switching embedder to REST (url=%s, model=%s, dims=%d, asymmetric=%s)...",
+        ollama_url,
+        model,
+        dimensions,
+        asymmetric,
     )
     _wait_for_indexing(meili_url, index)
+
+    if asymmetric:
+        doc_template = (
+            "title: {% if doc.title %}{{ doc.title }}{% else %}none{% endif %}"
+            " | text: {{ doc.text }}"
+        )
+    else:
+        doc_template = "{% if doc.title %}{{ doc.title }} {% endif %}{{ doc.text }}"
 
     body = {
         "embedders": {
@@ -571,9 +736,7 @@ def finalize_rest_embedder(
                 "dimensions": dimensions,
                 "request": {"model": model, "input": ["{{text}}", "{{..}}"]},
                 "response": {"embeddings": ["{{embedding}}", "{{..}}"]},
-                "documentTemplate": (
-                    "{% if doc.title %}{{ doc.title }} {% endif %}{{ doc.text }}"
-                ),
+                "documentTemplate": doc_template,
                 "documentTemplateMaxBytes": 8000,
             }
         }
@@ -669,27 +832,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="Directory for checkpoint files (default: %(default)s)",
     )
     parser.add_argument(
-        "--resume", action="store_true",
+        "--resume",
+        action="store_true",
         help="Resume from last checkpoint instead of starting fresh",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Preview batches without embedding or updating Meilisearch",
     )
     parser.add_argument(
-        "--setup", action="store_true",
+        "--setup",
+        action="store_true",
         help="Set embedder to userProvided before embedding",
     )
     parser.add_argument(
-        "--setup-only", action="store_true",
+        "--setup-only",
+        action="store_true",
         help="Set embedder to userProvided and exit (no embedding)",
     )
     parser.add_argument(
-        "--finalize", action="store_true",
+        "--finalize",
+        action="store_true",
         help="After embedding, switch embedder to REST for query-time embedding",
     )
     parser.add_argument(
-        "--finalize-only", action="store_true",
+        "--finalize-only",
+        action="store_true",
         help="Switch embedder to REST and exit (no embedding)",
     )
     parser.add_argument(
@@ -701,7 +870,8 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--asymmetric", action="store_true",
+        "--asymmetric",
+        action="store_true",
         help="Use asymmetric prefixes (title: X | text: Y) for embeddinggemma",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
@@ -729,8 +899,11 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.finalize_only:
         finalize_rest_embedder(
-            meili_url=args.meili_url, index=args.index,
-            model=args.model, ollama_url=embedder_url,
+            meili_url=args.meili_url,
+            index=args.index,
+            model=args.model,
+            ollama_url=embedder_url,
+            asymmetric=args.asymmetric,
         )
         return
 
@@ -754,8 +927,11 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.finalize:
         finalize_rest_embedder(
-            meili_url=args.meili_url, index=args.index,
-            model=args.model, ollama_url=embedder_url,
+            meili_url=args.meili_url,
+            index=args.index,
+            model=args.model,
+            ollama_url=embedder_url,
+            asymmetric=args.asymmetric,
         )
 
 

@@ -108,7 +108,7 @@ fi
 
 echo "[setup_hybrid] Starting batch embedding..."
 uv run python scripts/batch_embed.py \
-    --setup --finalize \
+    --setup --finalize --asymmetric \
     --model "$MODEL" \
     --embedder-url "$EMBEDDER_URL" \
     $RESUME \
@@ -116,4 +116,4 @@ uv run python scripts/batch_embed.py \
 
 echo ""
 echo "[setup_hybrid] Done! Hybrid search is ready."
-echo "  Try: uv run erd-search query 'how does inactivity leak work' --hybrid"
+echo "  Try: erd-search query 'how does inactivity leak work' --hybrid"
