@@ -69,7 +69,7 @@ class Settings:
     data_dir: str = "data"
     graph_db: str = "data/graph.db"
     state_db: str = "data/index_state.db"
-    schema_version: int = 1
+    schema_version: int = 2
     parser_version: str = "0.1.0"
     chunker_version: str = "0.1.0"
     code_repos: list[CodeRepo] = field(default_factory=list)

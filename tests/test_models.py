@@ -279,38 +279,107 @@ class TestChunkId:
 
 
 class TestDedupeKey:
-    def test_no_content_hash(self) -> None:
-        """dedupe_key should NOT include the content hash."""
+    # --- Forum/EIP chunks: position-based, no content hash ---
+
+    def test_forum_no_content_hash(self) -> None:
+        """Forum dedupe_key should NOT include the content hash."""
         chunk = _forum_chunk()
         assert chunk.content_hash not in chunk.dedupe_key
 
-    def test_same_position_same_dedupe_key(self) -> None:
+    def test_forum_same_position_same_key(self) -> None:
         """Same logical position should produce the same dedupe_key even with different text."""
         a = _forum_chunk(text="version 1 of the post")
         b = _forum_chunk(text="version 2 of the post, edited")
         assert a.dedupe_key == b.dedupe_key
 
-    def test_different_position_different_dedupe_key(self) -> None:
+    def test_forum_different_position_different_key(self) -> None:
         a = _forum_chunk(start_line=1, end_line=10)
         b = _forum_chunk(start_line=11, end_line=20)
         assert a.dedupe_key != b.dedupe_key
 
-    def test_with_part_index(self) -> None:
-        chunk = _code_chunk(part_index=1)
+    def test_forum_with_part_index(self) -> None:
+        chunk = _forum_chunk(part_index=1, part_count=3)
         assert chunk.dedupe_key.endswith("p1")
 
-    def test_without_part_index(self) -> None:
-        chunk = _code_chunk(part_index=None)
-        assert "p" not in chunk.dedupe_key.split(":")[-1]
-
-    def test_dedupe_key_is_prefix_of_chunk_id(self) -> None:
-        """chunk_id = dedupe_key + ':' + content_hash."""
+    def test_forum_dedupe_key_is_prefix_of_chunk_id(self) -> None:
+        """For forum chunks, chunk_id = dedupe_key + ':' + content_hash."""
         chunk = _forum_chunk()
         assert chunk.chunk_id == f"{chunk.dedupe_key}:{chunk.content_hash}"
 
-    def test_dedupe_key_with_part_is_prefix_of_chunk_id(self) -> None:
-        chunk = _code_chunk(part_index=2, part_count=5)
-        assert chunk.chunk_id == f"{chunk.dedupe_key}:{chunk.content_hash}"
+    # --- Code chunks: symbol_qualname:content_hash ---
+
+    def test_code_uses_qualname_and_hash(self) -> None:
+        """Code dedupe_key should be symbol_qualname:content_hash."""
+        chunk = _code_chunk()
+        assert chunk.dedupe_key == f"{chunk.symbol_qualname}:{chunk.content_hash}"
+
+    def test_code_same_function_same_content_same_key(self) -> None:
+        """Identical function across forks should produce the same dedupe_key."""
+        text = "func process_attestation(state, attestation) { ... }"
+        a = _code_chunk(
+            path="specs/altair/mainnet.py", text=text,
+            symbol_qualname="process_attestation",
+        )
+        b = _code_chunk(
+            path="specs/bellatrix/mainnet.py", text=text,
+            symbol_qualname="process_attestation",
+        )
+        assert a.dedupe_key == b.dedupe_key
+
+    def test_code_same_function_different_content_different_key(self) -> None:
+        """Same function name with different content preserves both versions."""
+        a = _code_chunk(
+            text="func v1() { old }", symbol_qualname="process_attestation",
+        )
+        b = _code_chunk(
+            text="func v2() { new }", symbol_qualname="process_attestation",
+        )
+        assert a.dedupe_key != b.dedupe_key
+
+    def test_code_without_qualname_falls_back_to_position(self) -> None:
+        """Code chunks without symbol_qualname use position-based key."""
+        chunk = _code_chunk(symbol_qualname="", symbol_name="")
+        assert chunk.source_name in chunk.dedupe_key
+        assert chunk.path in chunk.dedupe_key
+
+    def test_code_mainnet_vs_minimal_same_fork_dedupes(self) -> None:
+        """mainnet.py and minimal.py in the same fork have identical content → same key."""
+        text = "def get_base_reward(state, index): ..."
+        a = _code_chunk(
+            path="specs/altair/mainnet.py", text=text,
+            symbol_qualname="get_base_reward",
+        )
+        b = _code_chunk(
+            path="specs/altair/minimal.py", text=text,
+            symbol_qualname="get_base_reward",
+        )
+        assert a.dedupe_key == b.dedupe_key
+
+    def test_code_with_part_index_still_uses_content_hash(self) -> None:
+        """Code chunks with part_index use qualname:content_hash (part_index is in chunk_id, not dedupe_key)."""
+        chunk = _code_chunk(part_index=1, part_count=3)
+        assert chunk.dedupe_key == f"{chunk.symbol_qualname}:{chunk.content_hash}"
+        # part_index does NOT appear in the code dedupe_key
+        assert "p1" not in chunk.dedupe_key
+
+    def test_eip_uses_position_based_key(self) -> None:
+        """EIP chunks always use position-based dedupe_key."""
+        chunk = _eip_chunk()
+        assert chunk.source_name in chunk.dedupe_key
+        assert chunk.path in chunk.dedupe_key
+        assert chunk.content_hash not in chunk.dedupe_key
+
+    def test_eip_same_position_different_text_same_key(self) -> None:
+        """EIP edits at the same position should dedup (position-based)."""
+        a = _eip_chunk(text="## Abstract\n\nVersion 1")
+        b = _eip_chunk(text="## Abstract\n\nVersion 2, updated")
+        assert a.dedupe_key == b.dedupe_key
+
+    def test_code_different_functions_different_key(self) -> None:
+        """Different functions in the same file have different dedupe_keys."""
+        a = _code_chunk(symbol_qualname="process_attestation", text="func a() {}")
+        b = _code_chunk(symbol_qualname="process_deposit", text="func b() {}")
+        assert a.dedupe_key != b.dedupe_key
 
 
 # ===================================================================

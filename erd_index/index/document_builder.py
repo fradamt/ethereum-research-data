@@ -15,6 +15,7 @@ __all__ = ["chunk_to_document", "chunks_to_documents", "sanitize_chunk_id", "san
 # carriage return (0x0D).  These cause Meilisearch's JSON parser to reject
 # the entire payload with "control character (\u0000-\u001F) found".
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+_NON_MEILI_ID_RE = re.compile(r"[^A-Za-z0-9_-]")
 
 
 def sanitize_text(text: str) -> str:
@@ -32,7 +33,8 @@ def sanitize_chunk_id(chunk_id: str) -> str:
     Meilisearch IDs allow only alphanumeric characters, hyphens, and
     underscores.
     """
-    return chunk_id.replace(":", "-").replace("/", "_").replace(".", "_")
+    sanitized = chunk_id.replace(":", "-").replace("/", "_").replace(".", "_")
+    return _NON_MEILI_ID_RE.sub("_", sanitized)
 
 
 def chunk_to_document(chunk: Chunk, schema_version: int) -> dict:
@@ -55,6 +57,7 @@ def chunk_to_document(chunk: Chunk, schema_version: int) -> dict:
         "end_line": chunk.end_line,
         "content_hash": chunk.content_hash,
         "dedupe_key": chunk.dedupe_key,
+        "text_length": len(chunk.text),
         "indexed_at_ts": int(time.time()),
     }
 

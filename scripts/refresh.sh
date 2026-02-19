@@ -16,21 +16,20 @@ if [ "$1" = "--source" ] && [ -n "$2" ]; then
     echo "Refreshing source: $2"
     echo ""
     echo "=== Scraping ==="
-    python3 -m scraper --source "$2"
+    uv run python -m scraper --source "$2"
     echo ""
     echo "=== Converting ==="
-    python3 -m converter --source "$2"
+    uv run python -m converter --source "$2"
 else
     echo "Refreshing all sources (from sources.json)"
     echo ""
     echo "=== Scraping ==="
-    python3 -m scraper
+    uv run python -m scraper
     echo ""
     echo "=== Converting ==="
-    python3 -m converter
+    uv run python -m converter
 fi
 
 echo ""
 echo "Done. Corpus updated."
 echo "Run './scripts/index_meili.sh' to update the Meilisearch search index."
-echo "Run 'scripts/setup_qmd.sh' to update QMD collections (if using QMD)."

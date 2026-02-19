@@ -162,7 +162,7 @@ def embed_batched(
 
 
 def cosine_sim(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(x * x for x in b))
     if na == 0 or nb == 0:
@@ -248,13 +248,13 @@ def run_benchmark(models: list[str], top_k: int = 5) -> dict:
         t0 = time.time()
 
         # Warm up / ensure model is loaded
-        print(f"  Loading model...")
+        print("  Loading model...")
         try:
             test = embed(["test"], model)
             dims = len(test[0])
         except Exception as exc:
             print(f"  FAILED to load {model}: {exc}")
-            print(f"  Skipping this model.")
+            print("  Skipping this model.")
             continue
 
         print(f"  Dimensions: {dims}")
@@ -272,7 +272,7 @@ def run_benchmark(models: list[str], top_k: int = 5) -> dict:
 
         # 3. Rank
         model_results: dict[str, list[tuple[float, int]]] = {}
-        for qi, (cat, query) in enumerate(QUERIES):
+        for qi, (_cat, query) in enumerate(QUERIES):
             scores = []
             for di, de in enumerate(doc_embs):
                 sim = cosine_sim(query_embs[qi], de)
@@ -289,7 +289,7 @@ def run_benchmark(models: list[str], top_k: int = 5) -> dict:
     # 4. Print comparison
     print()
     print("=" * 70)
-    print("RESULTS: Side-by-side top-{} per query".format(top_k))
+    print(f"RESULTS: Side-by-side top-{top_k} per query")
     print("=" * 70)
 
     for cat, query in QUERIES:

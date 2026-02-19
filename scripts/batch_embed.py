@@ -318,16 +318,16 @@ def run_batch_embed(
 
     embedders = meili_get(meili_url, f"/indexes/{index}/settings/embedders")
     embedder = embedders.get(embedder_name)
-    if not embedder:
-        log.error("No embedder '%s' configured on index '%s'", embedder_name, index)
-        sys.exit(1)
-    if embedder.get("source") != "userProvided":
+    if embedder and embedder.get("source") not in ("userProvided", None):
         log.error(
-            "Embedder source is '%s', expected 'userProvided'. "
-            "Set it first with: --setup",
+            "Embedder source is '%s', expected 'userProvided' or no embedder. "
+            "Set it first with: --setup, or delete the embedder to write "
+            "vectors directly (requires vectorStore: true).",
             embedder.get("source"),
         )
         sys.exit(1)
+    if not embedder:
+        log.info("No embedder configured — writing vectors directly (vectorStore mode)")
 
     try:
         test_emb = embed_texts(["test"], model, ollama_url=ollama_url, timeout=30)

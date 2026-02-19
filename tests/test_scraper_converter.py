@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import urllib.error
-from http.client import HTTPResponse
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -31,7 +30,6 @@ def _make_http_error(
     headers: dict[str, str] | None = None,
 ) -> urllib.error.HTTPError:
     """Build an HTTPError with optional headers (e.g. Retry-After)."""
-    MagicMock(spec=HTTPResponse)
     msg = MagicMock()
     # HTTPError stores headers in exc.headers
     err = urllib.error.HTTPError(

@@ -10,7 +10,7 @@ __all__ = ["SCHEMA_VERSION", "get_index_settings"]
 
 # Bump when the index schema changes (fields added/removed/retyped).
 # Used by ensure_index() to detect when settings need re-applying.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def get_index_settings() -> dict:
@@ -65,6 +65,7 @@ def get_index_settings() -> dict:
             "used_imports",
             "content_hash",
             "dedupe_key",
+            "text_length",
         ],
         "sortableAttributes": [
             "source_date_ts",

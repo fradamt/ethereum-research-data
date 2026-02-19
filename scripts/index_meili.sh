@@ -57,6 +57,11 @@ fi
 echo "[index_meili] Starting sync..."
 uv run erd-index sync "$@"
 
+# Apply Ethereum terminology (synonyms) — idempotent, fast, ensures
+# search quality for abbreviations like SSZ, KZG, DAS, PBS, etc.
+echo "[index_meili] Applying terminology..."
+uv run erd-search --key "$MEILI_MASTER_KEY" apply-terminology
+
 echo "[index_meili] Showing stats..."
 uv run erd-index stats
 

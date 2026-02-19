@@ -115,6 +115,7 @@ class TestForumDocument:
         assert doc["end_line"] == 10
         assert doc["content_hash"] == chunk.content_hash
         assert doc["dedupe_key"] == chunk.dedupe_key
+        assert doc["text_length"] == len(chunk.text)
         assert "indexed_at_ts" in doc
 
     def test_forum_fields(self) -> None:
@@ -357,10 +358,27 @@ class TestSanitizeChunkId:
         expected = "eips-eip-4844_md-1-20-abcdef0123456789"
         assert sanitize_chunk_id(raw) == expected
 
+    def test_special_chars_replaced(self) -> None:
+        """Characters outside [A-Za-z0-9_-] are replaced with underscores."""
+        assert sanitize_chunk_id("path+with@special=chars") == "path_with_special_chars"
+        assert sanitize_chunk_id("file (copy).md") == "file__copy__md"
+        assert sanitize_chunk_id("a#b&c") == "a_b_c"
+
+    def test_unicode_replaced(self) -> None:
+        assert sanitize_chunk_id("eip-café") == "eip-caf_"
+
     def test_matches_document_id(self) -> None:
         chunk = _eip_chunk()
         doc = chunk_to_document(chunk, SCHEMA_VERSION)
         assert doc["id"] == sanitize_chunk_id(chunk.chunk_id)
+
+    def test_result_only_contains_valid_chars(self) -> None:
+        """The sanitized ID must match the Meilisearch ID regex."""
+        import re
+
+        raw = "forum:ethresearch:path/to/@types/file+name.md:1:20:abc123"
+        result = sanitize_chunk_id(raw)
+        assert re.fullmatch(r"[A-Za-z0-9_-]+", result), f"Invalid ID chars in: {result}"
 
 
 # ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@ immediately or refresh with the latest posts first.
 | Python 3.10+ | everything | -- |
 | [uv](https://docs.astral.sh/uv/) | package manager | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | [Meilisearch](https://www.meilisearch.com/docs/learn/getting_started/installation) | search infrastructure | see below |
-| [Ollama](https://ollama.com) + `nomic-embed-text` | hybrid search (optional) | `ollama pull nomic-embed-text` |
+| [Ollama](https://ollama.com) + `embeddinggemma:300m` | hybrid search (optional) | `ollama pull embeddinggemma:300m` |
 
 ### Installing Meilisearch
 
@@ -45,7 +45,8 @@ docker run -d --name meilisearch \
   -p 7700:7700 \
   -e MEILI_MASTER_KEY=changeme \
   -v $(pwd)/data/meili:/meili_data \
-  getmeili/meilisearch:latest
+  getmeili/meilisearch:latest \
+  meilisearch --experimental-allowed-ip-networks any
 ```
 
 ## Quick start
@@ -68,7 +69,15 @@ export MEILI_MASTER_KEY=changeme
 
 This takes a few minutes to parse, chunk, and index ~6,500 forum posts.
 After it finishes, search is available via the Meilisearch API at
-`http://localhost:7700`.
+`http://localhost:7700`, or via the `erd-search` CLI:
+
+```bash
+# Keyword search
+uv run erd-search query "proposer boost"
+
+# Hybrid search (requires Ollama + embedding — see below)
+uv run erd-search query "how does proposer boost work" --hybrid
+```
 
 ### Updating the corpus
 
@@ -144,12 +153,38 @@ curl -X POST 'http://localhost:7700/indexes/eth_chunks_v1/search' \
   -d '{"q": "process_attestation", "filter": "source_kind = '\''code'\''", "limit": 5}'
 ```
 
+## Hybrid search (optional)
+
+Hybrid search combines keyword matching with semantic embeddings for
+conceptual queries ("how does inactivity leak work"). Requires Ollama:
+
+```bash
+# Pull the embedding model
+ollama pull embeddinggemma:300m
+
+# Embed all documents (one-time, ~30 min for 93k docs)
+uv run python scripts/batch_embed.py --setup
+
+# Search with hybrid mode
+uv run erd-search query "what happens during an inactivity leak" --hybrid
+```
+
+The `--hybrid` flag defaults to `semanticRatio=0.5`, which blends keyword
+and semantic results. Use `--hybrid 0.7` for pure semantic mode.
+
+**Note:** Meilisearch v1.35+ blocks localhost connections by default. If
+using a non-Docker install, start Meilisearch with:
+
+```bash
+meilisearch --master-key=changeme --experimental-allowed-ip-networks any
+```
+
 ## Development
 
 ```bash
 uv sync --group dev
 
-# Run tests (400 tests, ~0.7s)
+# Run tests (~1100 tests, ~2s)
 uv run pytest
 
 # Lint

@@ -190,8 +190,19 @@ class Chunk(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def dedupe_key(self) -> str:
-        """Stable deduplication key (without content hash, so same logical
-        position deduplicates across minor edits)."""
+        """Stable deduplication key used by Meilisearch ``distinctAttribute``.
+
+        For code chunks with a symbol name, the key is
+        ``symbol_qualname:content_hash`` so that identical copies of the same
+        function across consensus-spec forks (e.g. altair, bellatrix, capella)
+        collapse into one result, while genuinely different implementations
+        (different content hash) are preserved.
+
+        For non-code chunks the key is position-based (without content hash)
+        so that the same logical position deduplicates across minor edits.
+        """
+        if self.source_kind == SourceKind.CODE and self.symbol_qualname:
+            return f"{self.symbol_qualname}:{self.content_hash}"
         parts = [self.source_name, self.path, str(self.start_line), str(self.end_line)]
         if self.part_index is not None:
             parts.append(f"p{self.part_index}")

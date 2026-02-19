@@ -23,7 +23,7 @@ small_group_target_chars = 2200
 small_group_max_members = 6
 
 [versions]
-schema_version = 1
+schema_version = 2
 parser_version = "0.1.0"
 chunker_version = "0.1.0"
 

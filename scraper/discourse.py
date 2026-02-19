@@ -52,7 +52,10 @@ def _save_json(path: Path, data: object) -> None:
             json.dump(data, f, indent=2, ensure_ascii=False)
         os.replace(tmp, path)
     except BaseException:
-        os.unlink(tmp)
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
         raise
 
 

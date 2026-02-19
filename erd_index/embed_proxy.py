@@ -22,13 +22,14 @@ Configuration precedence: CLI flags > environment variables > built-in defaults.
 
 Environment variables::
 
-    ERD_PROXY_PORT              (default 11435)
-    ERD_PROXY_MAX_CHARS         (default 4000)
-    ERD_PROXY_MAX_TOKENS        (default 1800)
-    ERD_PROXY_OLLAMA_URL        (default http://localhost:11434/api/embed)
-    ERD_PROXY_OLLAMA_BATCH_SIZE (default 10)
-    ERD_PROXY_WORKERS           (default 4)
-    ERD_PROXY_RETRY_COUNT       (default 3)
+    ERD_PROXY_PORT                (default 11435)
+    ERD_PROXY_MAX_CHARS           (default 4000)
+    ERD_PROXY_MAX_TOKENS          (default 1800)
+    ERD_PROXY_OLLAMA_URL          (default http://localhost:11434/api/embed)
+    ERD_PROXY_OLLAMA_BATCH_SIZE   (default 10)
+    ERD_PROXY_WORKERS             (default 4)
+    ERD_PROXY_RETRY_COUNT         (default 3)
+    ERD_PROXY_OLLAMA_CONCURRENCY  (default 1)
 """
 
 from __future__ import annotations
@@ -40,7 +41,9 @@ import json
 import logging
 import os
 import signal
+import socketserver
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -440,6 +443,23 @@ def embed_batch_concurrent_safe(
 
 
 # ---------------------------------------------------------------------------
+# Threading HTTP server — accepts concurrent connections from Meilisearch
+# while the semaphore in the handler serializes actual Ollama calls.
+# ---------------------------------------------------------------------------
+
+
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    """HTTP server that handles each request in a separate thread.
+
+    This prevents Meilisearch's many parallel embedding requests from
+    timing out while waiting in the TCP accept queue.  Actual Ollama
+    concurrency is controlled by ``_ProxyHandler.ollama_semaphore``.
+    """
+
+    daemon_threads = True
+
+
+# ---------------------------------------------------------------------------
 # HTTP handler
 # ---------------------------------------------------------------------------
 
@@ -456,10 +476,16 @@ class _ProxyHandler(http.server.BaseHTTPRequestHandler):
     dimensions: int = DEFAULT_DIMENSIONS
     executor: concurrent.futures.ThreadPoolExecutor | None = None
 
-    # Shared mutable stats (class-level; single-threaded server)
+    # Semaphore controlling how many concurrent Ollama requests are in-flight.
+    # With ThreadingHTTPServer, many Meilisearch connections are accepted
+    # concurrently, but this semaphore prevents overwhelming Ollama.
+    ollama_semaphore: threading.Semaphore = threading.Semaphore(1)
+
+    # Shared mutable stats — guarded by _stats_lock for thread safety
     stats: ClassVar[dict[str, int]] = {
         "total": 0, "split": 0, "sub_chunks": 0, "failed": 0,
     }
+    _stats_lock: ClassVar[threading.Lock] = threading.Lock()
 
     def do_POST(self) -> None:
         request_start = time.monotonic()
@@ -483,29 +509,33 @@ class _ProxyHandler(http.server.BaseHTTPRequestHandler):
         # Split all inputs, tracking which chunks belong to which input
         all_chunks: list[str] = []
         chunk_map: list[tuple[int, int]] = []  # (start_idx, count)
+        n_split = 0
+        n_sub_chunks = 0
 
         for text in inputs:
-            self.stats["total"] += 1
             tok = load_tokenizer()
             if tok is not None:
                 chunks = split_text_by_tokens(text, self.max_tokens)
             else:
                 chunks = split_text(text, self.max_chars)
             if len(chunks) > 1:
-                self.stats["split"] += 1
-                self.stats["sub_chunks"] += len(chunks)
+                n_split += 1
+                n_sub_chunks += len(chunks)
             chunk_map.append((len(all_chunks), len(chunks)))
             all_chunks.extend(chunks)
 
-        # Embed all chunks in one batched call (fast); None for failed chunks
-        all_embeddings = embed_batch_concurrent_safe(
-            all_chunks,
-            model,
-            ollama_url=self.ollama_url,
-            batch_size=self.batch_size,
-            retry_count=self.retry_count,
-            executor=self.executor,
-        )
+        # Acquire semaphore to limit concurrent Ollama requests.
+        # With ThreadingHTTPServer, many Meilisearch connections are accepted
+        # in parallel, but this prevents overwhelming Ollama.
+        with self.ollama_semaphore:
+            all_embeddings = embed_batch_concurrent_safe(
+                all_chunks,
+                model,
+                ollama_url=self.ollama_url,
+                batch_size=self.batch_size,
+                retry_count=self.retry_count,
+                executor=self.executor,
+            )
 
         # Auto-detect dimensions from first successful embedding
         for emb in all_embeddings:
@@ -525,7 +555,6 @@ class _ProxyHandler(http.server.BaseHTTPRequestHandler):
             sub = all_embeddings[start : start + count]
             if any(e is None for e in sub):
                 failed_in_batch += 1
-                self.stats["failed"] += 1
                 n_good = sum(1 for e in sub if e is not None)
                 preview = inputs[idx][:120].replace("\n", " ")
                 log.warning(
@@ -543,6 +572,14 @@ class _ProxyHandler(http.server.BaseHTTPRequestHandler):
                 result_embeddings.append(avg_embeddings(sub))
 
         elapsed = time.monotonic() - request_start
+
+        # Update shared stats under lock (thread-safe)
+        with self._stats_lock:
+            self.stats["total"] += len(inputs)
+            self.stats["split"] += n_split
+            self.stats["sub_chunks"] += n_sub_chunks
+            self.stats["failed"] += failed_in_batch
+
         if failed_in_batch:
             log.warning(
                 "Batch: %d/%d inputs failed (%.1fs). Total failures: %d",
@@ -584,17 +621,18 @@ class _ProxyHandler(http.server.BaseHTTPRequestHandler):
     _last_progress: ClassVar[int] = 0
 
     def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
-        total = self.stats["total"]
-        milestone = total // 500
-        if milestone > self._last_progress:
-            _ProxyHandler._last_progress = milestone
-            log.info(
-                "Progress: %d inputs, %d split (%d sub-chunks), %d failed",
-                total,
-                self.stats["split"],
-                self.stats["sub_chunks"],
-                self.stats["failed"],
-            )
+        with self._stats_lock:
+            total = self.stats["total"]
+            milestone = total // 500
+            if milestone > self._last_progress:
+                _ProxyHandler._last_progress = milestone
+                log.info(
+                    "Progress: %d inputs, %d split (%d sub-chunks), %d failed",
+                    total,
+                    self.stats["split"],
+                    self.stats["sub_chunks"],
+                    self.stats["failed"],
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -611,6 +649,7 @@ def configure_handler(
     retry_count: int = DEFAULT_RETRY_COUNT,
     dimensions: int = DEFAULT_DIMENSIONS,
     executor: concurrent.futures.ThreadPoolExecutor | None = None,
+    ollama_concurrency: int = 1,
 ) -> type[_ProxyHandler]:
     """Return a handler class configured with the given parameters."""
     _ProxyHandler.max_chars = max_chars
@@ -620,7 +659,9 @@ def configure_handler(
     _ProxyHandler.retry_count = retry_count
     _ProxyHandler.dimensions = dimensions
     _ProxyHandler.executor = executor
+    _ProxyHandler.ollama_semaphore = threading.Semaphore(ollama_concurrency)
     _ProxyHandler.stats = {"total": 0, "split": 0, "sub_chunks": 0, "failed": 0}
+    _ProxyHandler._stats_lock = threading.Lock()
     _ProxyHandler._last_progress = 0
     return _ProxyHandler
 
@@ -634,6 +675,7 @@ def run_server(
     batch_size: int = DEFAULT_BATCH_SIZE,
     retry_count: int = DEFAULT_RETRY_COUNT,
     workers: int = DEFAULT_WORKERS,
+    ollama_concurrency: int = 1,
 ) -> None:
     """Start the proxy server (blocking).  Handles SIGTERM for graceful shutdown."""
     # Pre-load tokenizer at startup so the first request isn't slow
@@ -647,8 +689,9 @@ def run_server(
         batch_size=batch_size,
         retry_count=retry_count,
         executor=executor,
+        ollama_concurrency=ollama_concurrency,
     )
-    server = http.server.HTTPServer(("127.0.0.1", port), handler)
+    server = ThreadingHTTPServer(("127.0.0.1", port), handler)
 
     def _shutdown(signum: int, frame: object) -> None:
         log.info("Received signal %d, shutting down", signum)
@@ -658,7 +701,8 @@ def run_server(
 
     tok_status = "token-aware" if load_tokenizer() is not None else "char-based"
     log.info(
-        "Splitting proxy on :%d -> %s (%s, max %d tokens / %d chars, batch %d, workers %d)",
+        "Embed proxy on :%d -> %s (%s, max %d tokens / %d chars, "
+        "batch %d, workers %d, ollama-concurrency %d)",
         port,
         ollama_url,
         tok_status,
@@ -666,6 +710,7 @@ def run_server(
         max_chars,
         batch_size,
         workers,
+        ollama_concurrency,
     )
     try:
         server.serve_forever()
@@ -767,6 +812,17 @@ def build_parser() -> argparse.ArgumentParser:
             f"(env: ERD_PROXY_WORKERS, default: {DEFAULT_WORKERS})"
         ),
     )
+    parser.add_argument(
+        "--ollama-concurrency",
+        type=int,
+        default=_env_int("ERD_PROXY_OLLAMA_CONCURRENCY", 1),
+        help=(
+            "Max concurrent embedding requests forwarded to Ollama.  "
+            "Meilisearch sends many parallel requests; this semaphore "
+            "prevents Ollama queue buildup and timeouts "
+            "(env: ERD_PROXY_OLLAMA_CONCURRENCY, default: 1)"
+        ),
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     return parser
 
@@ -792,6 +848,7 @@ def main(argv: list[str] | None = None) -> None:
         batch_size=args.ollama_batch_size,
         retry_count=args.retry_count,
         workers=args.workers,
+        ollama_concurrency=args.ollama_concurrency,
     )
 
 

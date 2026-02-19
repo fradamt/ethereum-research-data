@@ -11,6 +11,8 @@
         <string>11435</string>
         <string>--max-chars</string>
         <string>4000</string>
+        <string>--ollama-concurrency</string>
+        <string>20</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

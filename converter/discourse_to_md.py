@@ -581,7 +581,10 @@ class DiscourseConverter:
                     f.write(content)
                 os.replace(tmp, out_path)
             except BaseException:
-                os.unlink(tmp)
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
                 raise
             converted += 1
 
