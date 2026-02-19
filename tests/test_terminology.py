@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from erd_index.index.terminology import (
+    QUERY_PREFIX,
     apply_terminology_settings,
     expand_query,
     get_ethereum_dictionary,
     get_ethereum_synonyms,
+    prefix_query_for_embedding,
 )
-
 
 # ===================================================================
 # Synonym structure
@@ -63,9 +64,10 @@ class TestSynonyms:
         for abbrev in expected:
             assert abbrev in synonyms, f"Abbreviation {abbrev!r} missing from synonyms"
 
-    def test_ssz_expands_to_simple_serialize(self) -> None:
-        """Verify a specific synonym expansion works correctly."""
+    def test_ssz_synonym_includes_all_forms(self) -> None:
+        """SSZ should map to all its expansions including the short form."""
         synonyms = get_ethereum_synonyms()
+        assert "ssz serialization format" in synonyms["ssz"]
         assert "simple serialize" in synonyms["ssz"]
         assert "ssz" in synonyms["simple serialize"]
 
@@ -77,6 +79,44 @@ class TestSynonyms:
         assert "miner extractable value" in synonyms["mev"]
         # Cross-expansion: each expansion maps to the other
         assert "miner extractable value" in synonyms["maximal extractable value"]
+
+    def test_snark_long_form_still_in_synonyms(self) -> None:
+        """SNARK short expansion is primary, but long form remains for keyword synonyms."""
+        synonyms = get_ethereum_synonyms()
+        assert "snark cryptographic proof" in synonyms["snark"]
+        assert "succinct non-interactive argument of knowledge" in synonyms["snark"]
+
+    def test_stark_long_form_still_in_synonyms(self) -> None:
+        """STARK short expansion is primary, but long form remains for keyword synonyms."""
+        synonyms = get_ethereum_synonyms()
+        assert "stark cryptographic proof" in synonyms["stark"]
+        assert "scalable transparent argument of knowledge" in synonyms["stark"]
+
+    def test_ssz_all_forms_in_synonyms(self) -> None:
+        """SSZ should have short expansion, full form, and concatenated form."""
+        synonyms = get_ethereum_synonyms()
+        assert "ssz serialization format" in synonyms["ssz"]
+        assert "simple serialize" in synonyms["ssz"]
+        assert "simpleserialize" in synonyms["ssz"]
+
+    def test_blob_not_in_synonyms(self) -> None:
+        """'blob' synonym removed — too broad, cross-contaminates with EIP-4844."""
+        synonyms = get_ethereum_synonyms()
+        assert "blob" not in synonyms
+
+    def test_reorg_reorganization_synonyms(self) -> None:
+        """'reorg' and 'reorganization' should be bidirectional synonyms."""
+        synonyms = get_ethereum_synonyms()
+        assert "reorg" in synonyms
+        assert "reorganization" in synonyms
+        assert "reorganization" in synonyms["reorg"]
+        assert "reorg" in synonyms["reorganization"]
+
+    def test_reorg_chain_reorganization_synonym(self) -> None:
+        """'chain reorganization' should map back to 'reorg'."""
+        synonyms = get_ethereum_synonyms()
+        assert "chain reorganization" in synonyms
+        assert "reorg" in synonyms["chain reorganization"]
 
     def test_returns_copy_not_reference(self) -> None:
         """Mutating the returned dict must not affect future calls."""
@@ -92,28 +132,21 @@ class TestSynonyms:
 
 
 class TestDictionary:
-    """Validate the custom dictionary entries."""
+    """Validate the custom dictionary entries.
 
-    def test_dictionary_is_list_of_strings(self) -> None:
+    The dictionary is currently empty — retest #2 showed zero benefit from
+    dictionary entries (0/8 top-3 overlap for hyphenated vs non-hyphenated
+    queries).  These tests verify the API contract still holds.
+    """
+
+    def test_dictionary_is_list(self) -> None:
         dictionary = get_ethereum_dictionary()
         assert isinstance(dictionary, list)
-        for entry in dictionary:
-            assert isinstance(entry, str), f"Dictionary entry {entry!r} is not a string"
 
-    def test_dictionary_not_empty(self) -> None:
+    def test_dictionary_is_empty(self) -> None:
+        """Dictionary intentionally emptied after retest #2 showed no benefit."""
         dictionary = get_ethereum_dictionary()
-        assert len(dictionary) > 0
-
-    def test_known_terms_present(self) -> None:
-        """Spot-check that key compound terms are in the dictionary."""
-        dictionary = get_ethereum_dictionary()
-        expected = ["proto-danksharding", "single-slot-finality", "eip-4844"]
-        for term in expected:
-            assert term in dictionary, f"Term {term!r} missing from dictionary"
-
-    def test_no_duplicates(self) -> None:
-        dictionary = get_ethereum_dictionary()
-        assert len(dictionary) == len(set(dictionary))
+        assert len(dictionary) == 0
 
     def test_returns_copy_not_reference(self) -> None:
         """Mutating the returned list must not affect future calls."""
@@ -133,7 +166,7 @@ class TestExpandQuery:
 
     def test_expands_ssz(self) -> None:
         result = expand_query("SSZ Merkleization")
-        assert "Simple Serialize" in result or "simple serialize" in result
+        assert "ssz serialization format" in result
         assert result.startswith("SSZ Merkleization")
 
     def test_expands_kzg(self) -> None:
@@ -143,7 +176,7 @@ class TestExpandQuery:
 
     def test_expands_multiple(self) -> None:
         result = expand_query("SSZ and KZG in DAS")
-        assert "simple serialize" in result
+        assert "ssz serialization format" in result
         assert "kate polynomial commitment" in result
         assert "data availability sampling" in result
 
@@ -160,7 +193,7 @@ class TestExpandQuery:
     def test_case_insensitive(self) -> None:
         for variant in ("SSZ", "ssz", "Ssz"):
             result = expand_query(f"{variant} container")
-            assert "simple serialize" in result
+            assert "ssz serialization format" in result
 
     def test_preserves_original_query(self) -> None:
         """Original query text appears unchanged at the start."""
@@ -171,7 +204,7 @@ class TestExpandQuery:
     def test_handles_punctuation(self) -> None:
         """Abbreviations followed by punctuation should still be detected."""
         result = expand_query("What is SSZ?")
-        assert "simple serialize" in result
+        assert "ssz serialization format" in result
 
     def test_handles_slashes(self) -> None:
         """Abbreviations separated by slashes should be detected."""
@@ -212,13 +245,37 @@ class TestExpandQuery:
 
     def test_snark_stark_expand(self) -> None:
         result = expand_query("SNARK vs STARK tradeoffs")
-        assert "succinct non-interactive argument of knowledge" in result
-        assert "scalable transparent argument of knowledge" in result
+        assert "snark cryptographic proof" in result
+        assert "stark cryptographic proof" in result
+
+    def test_reorg_expands(self) -> None:
+        result = expand_query("reorg attack")
+        assert "reorganization" in result
+        assert result.startswith("reorg attack")
 
     def test_bls_expands(self) -> None:
         """BLS was moved to expandable — should expand now."""
         result = expand_query("BLS signature aggregation")
         assert "boneh-lynn-shacham" in result
+
+    def test_zk_snark_uses_short_expansion(self) -> None:
+        """ZK-SNARK expansion should use short form, not the 11-word full form."""
+        result = expand_query("ZK-SNARK circuit")
+        assert "zero knowledge snark proof" in result
+        assert "succinct non-interactive" not in result
+
+    def test_zk_stark_uses_short_expansion(self) -> None:
+        """ZK-STARK expansion should use short form, not the 10-word full form."""
+        result = expand_query("ZK-STARK verifier")
+        assert "zero knowledge stark proof" in result
+        assert "scalable transparent" not in result
+
+    def test_ssz_expansion_not_simple_serialize(self) -> None:
+        """SSZ primary expansion changed from 'simple serialize' to 'ssz serialization format'."""
+        result = expand_query("SSZ encoding")
+        assert "ssz serialization format" in result
+        # "simple serialize" is NOT the primary expansion (still in synonyms)
+        assert "simple serialize" not in result
 
 
 # ===================================================================
@@ -239,8 +296,8 @@ def _mock_urlopen_factory(
 ) -> list[MagicMock]:
     """Return mock urlopen responses in the interleaved call order.
 
-    Actual call order: PUT synonyms, poll task 1 (×N), PUT dictionary,
-    poll task 2 (×N).  *task1_statuses* and *task2_statuses* list the
+    Actual call order: PUT synonyms, poll task 1 (xN), PUT dictionary,
+    poll task 2 (xN).  *task1_statuses* and *task2_statuses* list the
     status values returned for each poll.  If *task2_statuses* is None,
     a single "succeeded" is used.
     """
@@ -264,6 +321,34 @@ def _mock_urlopen_factory(
             body["error"] = {"message": "test error"}
         responses.append(_make_resp(body))
     return responses
+
+
+class TestPrefixQueryForEmbedding:
+    """Tests for prefix_query_for_embedding and QUERY_PREFIX."""
+
+    def test_prefix_constant(self) -> None:
+        assert QUERY_PREFIX == "task: search result | query: "
+
+    def test_prepends_prefix(self) -> None:
+        assert (
+            prefix_query_for_embedding("inactivity leak")
+            == "task: search result | query: inactivity leak"
+        )
+
+    def test_empty_query(self) -> None:
+        assert prefix_query_for_embedding("") == "task: search result | query: "
+
+    def test_preserves_expanded_query(self) -> None:
+        expanded = expand_query("SSZ Merkleization")
+        prefixed = prefix_query_for_embedding(expanded)
+        assert prefixed.startswith(QUERY_PREFIX)
+        assert "SSZ Merkleization" in prefixed
+
+    def test_does_not_double_prefix(self) -> None:
+        """Calling prefix twice would double-prefix; callers should guard."""
+        once = prefix_query_for_embedding("test")
+        twice = prefix_query_for_embedding(once)
+        assert twice.count("task: search result") == 2  # intentional — no dedup
 
 
 class TestApplyTerminologySettings:
@@ -301,8 +386,8 @@ class TestApplyTerminologySettings:
         assert "simple serialize" in payload["ssz"]
 
     @patch("erd_index.index.terminology.urllib.request.urlopen")
-    def test_dictionary_payload_contains_expected_terms(self, mock_urlopen: MagicMock) -> None:
-        """The PUT dictionary payload includes compound terms."""
+    def test_dictionary_payload_is_empty_list(self, mock_urlopen: MagicMock) -> None:
+        """The PUT dictionary payload is an empty list (dictionary disabled)."""
         mock_urlopen.side_effect = _mock_urlopen_factory(["succeeded"])
 
         apply_terminology_settings("http://meili:7700", "k", "idx")
@@ -311,7 +396,7 @@ class TestApplyTerminologySettings:
         req2 = mock_urlopen.call_args_list[2][0][0]
         payload = json.loads(req2.data)
         assert isinstance(payload, list)
-        assert "proto-danksharding" in payload
+        assert len(payload) == 0
 
     @patch("erd_index.index.terminology.urllib.request.urlopen")
     def test_task_failure_raises_runtime_error(self, mock_urlopen: MagicMock) -> None:

@@ -36,7 +36,7 @@ from scripts.benchmark_queries import BENCHMARK_QUERIES, DEFAULT_MODES
 MEILI_URL = "http://localhost:7700"
 INDEX_UID = "eth_chunks_v1"
 SEARCH_LIMIT = 5
-_TIMEOUT = 15  # seconds per request
+_TIMEOUT = 30  # seconds per request
 
 MODES: dict[str, dict | None] = {
     "keyword": None,
@@ -106,7 +106,41 @@ def maybe_expand_query(query: str, mode: str, should_expand: bool) -> str:
     if mode == "keyword" or not should_expand:
         return query
     fn = _get_expand_fn()
-    if fn and fn is not False:
+    if fn:
+        return fn(query)
+    return query
+
+
+_prefix_query_fn = None
+
+
+def _get_prefix_fn():
+    global _prefix_query_fn
+    if _prefix_query_fn is not None:
+        return _prefix_query_fn
+    try:
+        from erd_index.index.terminology import prefix_query_for_embedding
+
+        _prefix_query_fn = prefix_query_for_embedding
+    except ImportError:
+        _prefix_query_fn = False
+    return _prefix_query_fn
+
+
+def maybe_prefix_query(query: str, mode: str) -> str:
+    """Prepend the embeddinggemma retrieval prefix for pure-semantic modes.
+
+    At ratio >= 0.6, Meilisearch uses pure vector ranking.  The prefix
+    activates embeddinggemma's retrieval-optimised behaviour.
+    """
+    hybrid_params = MODES.get(mode)
+    if hybrid_params is None:
+        return query  # keyword — no prefix
+    ratio = hybrid_params.get("semanticRatio", 0)
+    if ratio < 0.6:
+        return query  # keyword-dominant — prefix would add noise
+    fn = _get_prefix_fn()
+    if fn:
         return fn(query)
     return query
 
@@ -222,6 +256,8 @@ def run_benchmark(
 
             # Expand query for hybrid/semantic modes if flagged
             q = maybe_expand_query(query_text, mode, qdef.get("expand_for_hybrid", False))
+            # Add embeddinggemma retrieval prefix for pure-semantic modes
+            q = maybe_prefix_query(q, mode)
             hybrid_params = MODES[mode]
 
             # Run search

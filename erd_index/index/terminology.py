@@ -13,11 +13,19 @@ import urllib.error
 import urllib.request
 
 __all__ = [
+    "QUERY_PREFIX",
     "apply_terminology_settings",
     "expand_query",
     "get_ethereum_dictionary",
     "get_ethereum_synonyms",
+    "prefix_query_for_embedding",
 ]
+
+# embeddinggemma:300m asymmetric retrieval prefix.  The model was trained with
+# ``task: search result | query: {q}`` for queries and
+# ``title: {title} | text: {content}`` for documents.  Adding the query prefix
+# activates retrieval-optimised behaviour in the embedding model.
+QUERY_PREFIX = "task: search result | query: "
 
 # Timeout for HTTP requests to Meilisearch.
 _TIMEOUT = 10
@@ -27,13 +35,13 @@ _TIMEOUT = 10
 # back to the key.
 _ABBREVIATIONS: dict[str, list[str]] = {
     # --- Serialization & cryptography ---
-    "ssz": ["simple serialize", "simpleserialize"],
+    "ssz": ["ssz serialization format", "simple serialize", "simpleserialize"],
     "kzg": ["kate polynomial commitment", "kate-zaverucha-goldberg"],
     "rlp": ["recursive length prefix"],
     "mpt": ["merkle patricia trie"],
     "bls": ["boneh-lynn-shacham"],
-    "snark": ["succinct non-interactive argument of knowledge"],
-    "stark": ["scalable transparent argument of knowledge"],
+    "snark": ["snark cryptographic proof", "succinct non-interactive argument of knowledge"],
+    "stark": ["stark cryptographic proof", "scalable transparent argument of knowledge"],
     "vdf": ["verifiable delay function"],
     "verkle": ["vector commitment merkle tree", "verkle tree", "verkle trie"],
     # --- Data availability ---
@@ -46,6 +54,8 @@ _ABBREVIATIONS: dict[str, list[str]] = {
     "gasper": ["ghost and casper combined consensus"],
     "ssf": ["single slot finality", "single-slot finality"],
     "randao": ["random number generation dao"],
+    "reorg": ["reorganization", "chain reorganization"],
+    "reorganization": ["reorg", "chain reorganization"],
     # --- Block production & MEV ---
     "pbs": ["proposer-builder separation", "proposer builder separation"],
     "epbs": ["enshrined proposer-builder separation"],
@@ -61,69 +71,22 @@ _ABBREVIATIONS: dict[str, list[str]] = {
     "eip": ["ethereum improvement proposal"],
     "erc": ["ethereum request for comments"],
     "eof": ["evm object format"],
-    "blob": ["blob transaction", "eip-4844 data blob"],
     # --- Staking & validators ---
     "dvt": ["distributed validator technology"],
     # --- Zero-knowledge ---
     "zkp": ["zero knowledge proof"],
-    "zk-snark": ["zero knowledge succinct non-interactive argument of knowledge"],
-    "zk-stark": ["zero knowledge scalable transparent argument of knowledge"],
+    "zk-snark": ["zero knowledge snark proof", "zero knowledge succinct non-interactive argument of knowledge"],
+    "zk-stark": ["zero knowledge stark proof", "zero knowledge scalable transparent argument of knowledge"],
     # --- DeFi / L2 ---
     "amm": ["automated market maker"],
     "lst": ["liquid staking token"],
 }
 
-# Compound terms that the Meilisearch tokenizer should treat as single tokens.
-_DICTIONARY: list[str] = [
-    # Sharding & data availability
-    "proto-danksharding",
-    "danksharding",
-    "proto-dank-sharding",
-    "data-availability-sampling",
-    "peer-data-availability-sampling",
-    # Consensus & finality
-    "single-slot-finality",
-    "lmd-ghost",
-    "casper-ffg",
-    # Block production & MEV
-    "proposer-builder-separation",
-    "enshrined-proposer-builder-separation",
-    "mev-boost",
-    "fork-choice-enforced-inclusion-lists",
-    "inclusion-list",
-    "attester-proposer-separation",
-    "maximal-extractable-value",
-    "protocol-enforced-proposer-commitments",
-    # Trees & state
-    "verkle-tree",
-    "verkle-trie",
-    "merkle-patricia-trie",
-    "state-expiry",
-    # Infrastructure
-    "beacon-chain",
-    "execution-layer",
-    "consensus-layer",
-    "account-abstraction",
-    "distributed-validator-technology",
-    "liquid-staking-token",
-    # Zero-knowledge
-    "zk-snark",
-    "zk-stark",
-    "zero-knowledge-proof",
-    # Serialization
-    "simple-serialize",
-    "recursive-length-prefix",
-    # Common EIP references
-    "eip-4844",
-    "eip-1559",
-    "eip-4788",
-    "eip-7594",
-    "eip-4337",
-    "eip-7702",
-    "eip-7251",
-    "eip-6110",
-    "eip-7002",
-]
+# Compound terms for the Meilisearch tokenizer.  Retest #2 (2026-02-18)
+# showed zero benefit from dictionary entries — hyphenated and non-hyphenated
+# forms still produce different results (0/8 top-3 overlap).  Kept empty
+# pending future Meilisearch improvements to hyphen normalization.
+_DICTIONARY: list[str] = []
 
 
 def get_ethereum_synonyms() -> dict[str, list[str]]:
@@ -162,7 +125,7 @@ _EXPANDABLE: frozenset[str] = frozenset({
     # Data availability
     "das", "peerdas", "danksharding",
     # Consensus & finality
-    "lmd-ghost", "ffg", "gasper", "ssf", "randao",
+    "lmd-ghost", "ffg", "gasper", "ssf", "randao", "reorg", "reorganization",
     # Block production & MEV
     "pbs", "epbs", "mev", "pepc", "aps", "focil",
     # Protocol
@@ -186,7 +149,7 @@ def expand_query(query: str) -> str:
     Example::
 
         >>> expand_query("SSZ Merkleization")
-        'SSZ Merkleization Simple Serialize'
+        'SSZ Merkleization ssz serialization format'
     """
     tokens = {m.group().lower() for m in _TOKEN_RE.finditer(query)}
     expansions: list[str] = []
@@ -196,6 +159,16 @@ def expand_query(query: str) -> str:
     if not expansions:
         return query
     return query + " " + " ".join(expansions)
+
+
+def prefix_query_for_embedding(query: str) -> str:
+    """Prepend the embeddinggemma retrieval prefix to *query*.
+
+    Should only be applied when semantic search is active (ratio >= 0.6).
+    At lower ratios keyword ranking dominates, and the prefix words would
+    add noise to keyword matching.
+    """
+    return f"{QUERY_PREFIX}{query}"
 
 
 def apply_terminology_settings(meili_url: str, admin_key: str, index_uid: str) -> None:

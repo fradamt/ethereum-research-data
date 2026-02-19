@@ -29,7 +29,8 @@ import urllib.request
 DEFAULT_MEILI_URL = "http://localhost:7700"
 DEFAULT_INDEX = "eth_chunks_v1"
 DEFAULT_LIMIT = 10
-DEFAULT_SEMANTIC_RATIO = 0.7
+DEFAULT_SEMANTIC_RATIO = 0.5
+DEFAULT_MIN_TEXT_LENGTH = 50
 DEFAULT_FIELDS = "title,text,url,source_kind,source_name,author"
 DEFAULT_DISTINCT = "doc_id"
 _TEXT_PREVIEW_LEN = 200
@@ -132,15 +133,30 @@ def build_search_params(args: argparse.Namespace) -> dict:
 
             query_text = expand_query(query_text)
 
+        # At ratio >= 0.6, Meilisearch uses pure vector ranking (binary
+        # switch).  Prepend the embeddinggemma retrieval prefix so the model
+        # activates its retrieval-optimised behaviour.
+        if ratio >= 0.6:
+            from erd_index.index.terminology import prefix_query_for_embedding
+
+            query_text = prefix_query_for_embedding(query_text)
+
     params: dict = {"q": query_text, "limit": args.limit}
 
     # Filters
     filters = _build_filters(args)
-    if filters:
-        params["filter"] = " AND ".join(filters)
 
     if ratio is not None:
         params["hybrid"] = {"semanticRatio": ratio, "embedder": "default"}
+        # Filter short chunks whose embeddings are too generic for semantic search
+        min_len = getattr(args, "min_text_length", DEFAULT_MIN_TEXT_LENGTH)
+        if min_len is None:
+            min_len = DEFAULT_MIN_TEXT_LENGTH
+        if min_len > 0:
+            filters.append(f"text_length >= {min_len}")
+
+    if filters:
+        params["filter"] = " AND ".join(filters)
 
     # Sort
     sort = getattr(args, "sort", None)
@@ -376,6 +392,13 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument(
         "--no-expand", action="store_true",
         help="Disable query expansion for hybrid search (expands Ethereum abbreviations by default)",
+    )
+    q.add_argument(
+        "--min-text-length", type=int, default=None,
+        help=(
+            f"Minimum text length for hybrid search results "
+            f"(default {DEFAULT_MIN_TEXT_LENGTH}; 0 to disable)"
+        ),
     )
 
     # --- stats ---

@@ -14,6 +14,7 @@ from erd_index.search_cli import (
     DEFAULT_DISTINCT,
     DEFAULT_FIELDS,
     DEFAULT_LIMIT,
+    DEFAULT_MIN_TEXT_LENGTH,
     DEFAULT_SEMANTIC_RATIO,
     build_parser,
     build_search_params,
@@ -167,7 +168,7 @@ class TestBuildSearchParams:
     def test_hybrid_expands_query(self) -> None:
         args = _parse_query(["SSZ Merkleization", "--hybrid"])
         params = build_search_params(args)
-        assert "simple serialize" in params["q"].lower()
+        assert "ssz serialization format" in params["q"].lower()
         assert params["q"].startswith("SSZ Merkleization")
 
     def test_no_expansion_without_hybrid(self) -> None:
@@ -179,6 +180,51 @@ class TestBuildSearchParams:
         args = _parse_query(["SSZ Merkleization", "--hybrid", "--no-expand"])
         params = build_search_params(args)
         assert params["q"] == "SSZ Merkleization"
+
+    def test_hybrid_07_adds_query_prefix(self) -> None:
+        """At ratio 0.7 (pure semantic), query gets embeddinggemma prefix."""
+        args = _parse_query(["test query", "--hybrid", "0.7"])
+        params = build_search_params(args)
+        assert params["q"].startswith("task: search result | query: ")
+        assert "test query" in params["q"]
+
+    def test_hybrid_05_no_query_prefix(self) -> None:
+        """At ratio 0.5 (keyword-dominant), no prefix applied."""
+        args = _parse_query(["test query", "--hybrid", "0.5"])
+        params = build_search_params(args)
+        assert not params["q"].startswith("task: search result")
+
+    def test_hybrid_default_05_no_prefix(self) -> None:
+        """Default --hybrid (0.5) is below threshold — no prefix."""
+        args = _parse_query(["test query", "--hybrid"])
+        params = build_search_params(args)
+        assert not params["q"].startswith("task: search result")
+
+    def test_no_prefix_without_hybrid(self) -> None:
+        """Keyword mode never gets a prefix."""
+        args = _parse_query(["test query"])
+        params = build_search_params(args)
+        assert params["q"] == "test query"
+
+    def test_hybrid_adds_text_length_filter(self) -> None:
+        args = _parse_query(["test", "--hybrid"])
+        params = build_search_params(args)
+        assert f"text_length >= {DEFAULT_MIN_TEXT_LENGTH}" in params["filter"]
+
+    def test_no_text_length_filter_without_hybrid(self) -> None:
+        args = _parse_query(["test"])
+        params = build_search_params(args)
+        assert "text_length" not in params.get("filter", "")
+
+    def test_custom_min_text_length(self) -> None:
+        args = _parse_query(["test", "--hybrid", "--min-text-length", "100"])
+        params = build_search_params(args)
+        assert "text_length >= 100" in params["filter"]
+
+    def test_min_text_length_zero_disables_filter(self) -> None:
+        args = _parse_query(["test", "--hybrid", "--min-text-length", "0"])
+        params = build_search_params(args)
+        assert "text_length" not in params.get("filter", "")
 
 
 # ===================================================================
@@ -256,7 +302,7 @@ class TestFormatHit:
         hit = {"title": "T", "text": "line1\nline2\nline3"}
         out = format_hit(1, hit)
         # Text preview should be single-line (newlines replaced with spaces)
-        text_line = [l for l in out.split("\n") if "line1" in l][0]
+        text_line = next(line for line in out.split("\n") if "line1" in line)
         assert "\n" not in text_line.replace("\n", "")
 
     def test_no_metadata_line_when_empty(self) -> None:
