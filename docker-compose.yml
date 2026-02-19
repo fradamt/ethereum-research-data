@@ -1,0 +1,45 @@
+# Docker Compose for Meilisearch + Ollama
+#
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Logs:   docker compose logs -f meilisearch
+#
+# After starting, run:
+#   export MEILI_MASTER_KEY=changeme
+#   ./scripts/index_meili.sh                   # keyword search
+#   ./scripts/setup_hybrid.sh --docker         # + hybrid search (optional)
+#
+# Both services persist data in named volumes, so stopping/starting
+# preserves the index and downloaded models.
+
+services:
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    ports:
+      - "${ERD_MEILI_PORT:-7700}:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-changeme}
+    volumes:
+      - meili_data:/meili_data
+    command: meilisearch --experimental-allowed-ip-networks any
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "${ERD_OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # GPU support (uncomment for NVIDIA):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  meili_data:
+  ollama_data:
