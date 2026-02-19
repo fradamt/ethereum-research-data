@@ -31,9 +31,10 @@ DEFAULT_INDEX = "eth_chunks_v1"
 DEFAULT_LIMIT = 10
 DEFAULT_SEMANTIC_RATIO = 0.5
 DEFAULT_MIN_TEXT_LENGTH = 50
-DEFAULT_FIELDS = "title,text,url,source_kind,source_name,author"
+DEFAULT_FIELDS = "title,text,url,path,start_line,heading_path,source_kind,source_name,author"
 DEFAULT_DISTINCT = "doc_id"
 _TEXT_PREVIEW_LEN = 200
+_TEXT_FULL_LEN = 4000
 
 # ---------------------------------------------------------------------------
 # Env helpers
@@ -222,7 +223,7 @@ def _build_filters(args: argparse.Namespace) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def format_hit(idx: int, hit: dict) -> str:
+def format_hit(idx: int, hit: dict, *, full: bool = False) -> str:
     """Format a single search hit for terminal display."""
     lines: list[str] = []
 
@@ -239,21 +240,27 @@ def format_hit(idx: int, hit: dict) -> str:
     if meta_parts:
         lines.append("    " + " | ".join(meta_parts))
 
-    # URL / path line
+    # Heading path (section context)
+    heading_path = hit.get("heading_path")
+    if heading_path:
+        lines.append("    " + " > ".join(heading_path))
+
+    # URL / path line — show both when available
     url = hit.get("url")
     path = hit.get("path")
     start_line = hit.get("start_line")
     if url:
         lines.append(f"    {url}")
-    elif path:
+    if path:
         loc = f"{path}:{start_line}" if start_line else path
         lines.append(f"    {loc}")
 
-    # Text preview
+    # Text: full mode shows up to 4000 chars, default shows 200-char preview
     text = hit.get("text", "")
     if text:
-        preview = text[:_TEXT_PREVIEW_LEN].replace("\n", " ").strip()
-        if len(text) > _TEXT_PREVIEW_LEN:
+        max_len = _TEXT_FULL_LEN if full else _TEXT_PREVIEW_LEN
+        preview = text[:max_len].replace("\n", " ").strip()
+        if len(text) > max_len:
             preview += "..."
         wrapped = textwrap.fill(preview, width=96, initial_indent="    ", subsequent_indent="    ")
         lines.append(wrapped)
@@ -261,7 +268,7 @@ def format_hit(idx: int, hit: dict) -> str:
     return "\n".join(lines)
 
 
-def _print_results(data: dict, *, json_mode: bool, verbose: bool) -> None:
+def _print_results(data: dict, *, json_mode: bool, verbose: bool, full: bool = False) -> None:
     """Print search results to stdout."""
     if json_mode:
         print(json.dumps(data, indent=2))
@@ -271,7 +278,7 @@ def _print_results(data: dict, *, json_mode: bool, verbose: bool) -> None:
     for i, hit in enumerate(hits, 1):
         if i > 1:
             print()
-        print(format_hit(i, hit))
+        print(format_hit(i, hit, full=full))
 
     # Summary
     total = data.get("estimatedTotalHits", len(hits))
@@ -295,7 +302,7 @@ def _cmd_query(args: argparse.Namespace) -> None:
     url = f"{args.url}/indexes/{DEFAULT_INDEX}/search"
     params = build_search_params(args)
     data = _meili_request(url, args.key, method="POST", payload=params)
-    _print_results(data, json_mode=args.json, verbose=args.verbose)
+    _print_results(data, json_mode=args.json, verbose=args.verbose, full=getattr(args, "full", False))
 
 
 def _cmd_stats(args: argparse.Namespace) -> None:
@@ -399,6 +406,10 @@ def build_parser() -> argparse.ArgumentParser:
             f"Minimum text length for hybrid search results "
             f"(default {DEFAULT_MIN_TEXT_LENGTH}; 0 to disable)"
         ),
+    )
+    q.add_argument(
+        "--full", action="store_true",
+        help="Show full text instead of 200-char preview (up to 4000 chars)",
     )
 
     # --- stats ---
