@@ -46,7 +46,7 @@ def parse_markdown(
     """
     fm, body = extract_frontmatter(text)
     source_kind = _source_kind_for(source_name)
-    title = fm.get("title", "") or _extract_title(body)
+    title = fm.get("title", "") or _extract_title(body) or _title_from_path(path)
 
     # Line offset: number of lines consumed by frontmatter + delimiters.
     # _line_number computes 1-based lines relative to body; add this offset
@@ -91,6 +91,14 @@ def _extract_title(body: str) -> str:
         if len(m.group(1)) == 1:
             return m.group(2).strip()
     return ""
+
+
+def _title_from_path(path: str) -> str:
+    """Derive a title from the filename, stripping extension."""
+    from pathlib import PurePosixPath
+
+    stem = PurePosixPath(path).stem
+    return stem if stem else ""
 
 
 # ---------------------------------------------------------------------------

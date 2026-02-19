@@ -37,9 +37,9 @@ def parse_pdf_file(
         title = doc.metadata.get("title", "") or ""
         toc = doc.get_toc()
 
-        # Fallback title: first TOC entry, or largest text on page 1
+        # Fallback title: largest text on page 1, then filename
         if not title:
-            title = _extract_title_fallback(doc, toc)
+            title = _extract_title_fallback(doc, toc) or path.stem
 
         if toc:
             units = _parse_with_toc(doc, toc, title=title)
