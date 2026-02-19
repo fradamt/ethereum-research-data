@@ -9,6 +9,7 @@ Extraction strategy (priority order):
 from __future__ import annotations
 
 import logging
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -36,6 +37,10 @@ def parse_pdf_file(
         title = doc.metadata.get("title", "") or ""
         toc = doc.get_toc()
 
+        # Fallback title: first TOC entry, or largest text on page 1
+        if not title:
+            title = _extract_title_fallback(doc, toc)
+
         if toc:
             units = _parse_with_toc(doc, toc, title=title)
         else:
@@ -57,6 +62,51 @@ def parse_pdf_file(
         return units
     finally:
         doc.close()
+
+
+# ---------------------------------------------------------------------------
+# Title extraction fallback
+# ---------------------------------------------------------------------------
+
+
+_ARXIV_RE = re.compile(r"^arXiv:\d+\.\d+")
+
+
+def _extract_title_fallback(doc: pymupdf.Document, toc: list[list]) -> str:
+    """Extract title from the first page when PDF metadata has no title.
+
+    Strategy: find the largest text on page 1 that isn't a header artifact
+    (like arXiv IDs). Research papers typically have the title in the
+    largest font on the first page.
+    """
+    if not doc:
+        return ""
+    page = doc[0]
+    blocks = page.get_text("dict", flags=pymupdf.TEXT_PRESERVE_WHITESPACE)["blocks"]
+
+    # Collect all lines with their font sizes
+    candidates: list[tuple[float, str]] = []
+    for block in blocks:
+        if "lines" not in block:
+            continue
+        for line in block["lines"]:
+            parts: list[str] = []
+            line_max_size = 0.0
+            for span in line["spans"]:
+                text = span["text"].strip()
+                if text:
+                    parts.append(text)
+                    line_max_size = max(line_max_size, span["size"])
+            line_text = " ".join(parts)
+            if line_text and not _ARXIV_RE.match(line_text):
+                candidates.append((line_max_size, line_text))
+
+    if not candidates:
+        return ""
+
+    # Return the largest non-artifact text
+    candidates.sort(key=lambda x: -x[0])
+    return candidates[0][1]
 
 
 # ---------------------------------------------------------------------------

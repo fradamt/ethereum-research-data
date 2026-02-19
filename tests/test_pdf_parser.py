@@ -141,6 +141,58 @@ class TestParsePdfFlat:
             assert u.text.strip()
 
 
+class TestParsePdfTitleFallback:
+    def test_title_from_largest_font_when_no_metadata(self, tmp_path: Path):
+        """PDFs without metadata title should extract title from page 1 largest text."""
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 80), "My Important Paper Title", fontsize=18)
+        page.insert_text((72, 130), "Abstract", fontsize=14)
+        page.insert_text((72, 160), "Some body text here.", fontsize=10)
+        # No metadata title set, no TOC
+        out = tmp_path / "no_meta_title.pdf"
+        doc.save(str(out))
+        doc.close()
+
+        units = parse_pdf_file(out, source_name="vault")
+        assert len(units) >= 1
+        assert units[0].title == "My Important Paper Title"
+
+    def test_title_skips_arxiv_header(self, tmp_path: Path):
+        """arXiv ID lines should be skipped when extracting fallback title."""
+        doc = pymupdf.open()
+        page = doc.new_page()
+        # arXiv header in largest font (size 20)
+        page.insert_text((72, 40), "arXiv:2003.03052v3  [cs.CR]  11 May 2020", fontsize=20)
+        # Actual title in slightly smaller font (size 17)
+        page.insert_text((72, 80), "Combining GHOST and Casper", fontsize=17)
+        page.insert_text((72, 120), "Some body text.", fontsize=10)
+        out = tmp_path / "arxiv_paper.pdf"
+        doc.save(str(out))
+        doc.close()
+
+        units = parse_pdf_file(out, source_name="vault")
+        assert len(units) >= 1
+        assert units[0].title == "Combining GHOST and Casper"
+
+    def test_title_fallback_with_toc_no_metadata(self, tmp_path: Path):
+        """PDFs with TOC but no metadata title still get a title from page 1."""
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 60), "Gasper: Combining GHOST and Casper", fontsize=18)
+        page.insert_text((72, 100), "1 Introduction", fontsize=14)
+        page.insert_text((72, 130), "We present Gasper.", fontsize=10)
+        toc = [[1, "Introduction", 1]]
+        doc.set_toc(toc)
+        out = tmp_path / "toc_no_meta.pdf"
+        doc.save(str(out))
+        doc.close()
+
+        units = parse_pdf_file(out, source_name="vault")
+        for u in units:
+            assert u.title == "Gasper: Combining GHOST and Casper"
+
+
 class TestParsePdfEdgeCases:
     def test_empty_pdf(self, tmp_path: Path):
         doc = pymupdf.open()
