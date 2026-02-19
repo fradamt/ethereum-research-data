@@ -1,4 +1,4 @@
-"""Ground truth query set for erd-search benchmark.
+"""Ground truth query set for eth-search benchmark.
 
 Derived from 4 rounds of manual testing (~500+ queries) between 2026-02-17
 and 2026-02-18. Each query has relevance patterns, strong-match patterns,

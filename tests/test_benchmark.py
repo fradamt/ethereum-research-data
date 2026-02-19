@@ -432,7 +432,7 @@ class TestPrintReport:
         }
         print_report(report, verbose=False)
         captured = capsys.readouterr()
-        assert "erd-search benchmark" in captured.out
+        assert "eth-search benchmark" in captured.out
         assert "keyword" in captured.out
         assert "Precision@5" in captured.out
 

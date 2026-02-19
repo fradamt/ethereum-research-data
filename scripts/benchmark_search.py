@@ -1,4 +1,4 @@
-"""Automated search quality benchmark for erd-search (Meilisearch index eth_chunks_v1).
+"""Automated search quality benchmark for eth-search (Meilisearch index eth_chunks_v1).
 
 Loads ground truth queries from benchmark_queries.py, runs searches against live
 Meilisearch for each query x mode, scores results using regex pattern matching,
@@ -369,7 +369,7 @@ def print_report(report: dict, *, verbose: bool = False, baseline: dict | None =
     modes = list(agg.keys())
 
     print(
-        f"\nerd-search benchmark -- {n_queries} queries x {len(modes)} modes = {n_searches} searches"
+        f"\neth-search benchmark -- {n_queries} queries x {len(modes)} modes = {n_searches} searches"
     )
     print()
 
@@ -480,7 +480,7 @@ def print_report(report: dict, *, verbose: bool = False, baseline: dict | None =
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="benchmark_search",
-        description="Benchmark erd-search quality with ground truth queries.",
+        description="Benchmark eth-search quality with ground truth queries.",
     )
     parser.add_argument(
         "--mode",

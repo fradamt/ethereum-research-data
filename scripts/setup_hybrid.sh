@@ -116,4 +116,4 @@ uv run python scripts/batch_embed.py \
 
 echo ""
 echo "[setup_hybrid] Done! Hybrid search is ready."
-echo "  Try: erd-search query 'how does inactivity leak work' --hybrid"
+echo "  Try: eth-search query 'how does inactivity leak work' --hybrid"

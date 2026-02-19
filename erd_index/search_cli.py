@@ -334,9 +334,9 @@ def _cmd_apply_terminology(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for ``erd-search``."""
+    """Build the argument parser for ``eth-search``."""
     parser = argparse.ArgumentParser(
-        prog="erd-search",
+        prog="eth-search",
         description="Search the Ethereum Research Data Meilisearch index.",
     )
     parser.add_argument(
@@ -411,7 +411,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """CLI entry point for ``erd-search``."""
+    """CLI entry point for ``eth-search``."""
     parser = build_parser()
     args = parser.parse_args(argv)
 

@@ -17,8 +17,8 @@ set -euo pipefail
 
 # ── Preflight checks ────────────────────────────────────────────────
 
-if ! command -v erd-index &>/dev/null || ! command -v erd-search &>/dev/null; then
-    echo "[index_meili] ERROR: erd-index/erd-search not found." >&2
+if ! command -v erd-index &>/dev/null || ! command -v eth-search &>/dev/null; then
+    echo "[index_meili] ERROR: erd-index/eth-search not found." >&2
     echo "  Install with: uv tool install -e /path/to/ethereum-research-data" >&2
     exit 1
 fi
@@ -70,7 +70,7 @@ erd-index sync "$@"
 # Apply Ethereum terminology (synonyms) — idempotent, fast, ensures
 # search quality for abbreviations like SSZ, KZG, DAS, PBS, etc.
 echo "[index_meili] Applying terminology..."
-erd-search --key "$MEILI_MASTER_KEY" apply-terminology
+eth-search --key "$MEILI_MASTER_KEY" apply-terminology
 
 echo "[index_meili] Showing stats..."
 erd-index stats

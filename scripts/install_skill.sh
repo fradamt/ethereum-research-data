@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install the erd-search skill globally for Claude Code.
+# Install the eth-search skill globally for Claude Code.
 #
 # This makes the skill available from any project directory,
 # not just when working inside this repo.
@@ -10,8 +10,8 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE="$REPO/skills/erd-search"
-TARGET="$HOME/.claude/skills/erd-search"
+SOURCE="$REPO/skills/eth-search"
+TARGET="$HOME/.claude/skills/eth-search"
 
 if [ ! -d "$SOURCE" ]; then
     echo "ERROR: Skill not found at $SOURCE" >&2
@@ -35,4 +35,4 @@ else
     echo "Symlinked $TARGET -> $SOURCE"
 fi
 
-echo "Done. The erd-search skill is now available globally in Claude Code."
+echo "Done. The eth-search skill is now available globally in Claude Code."

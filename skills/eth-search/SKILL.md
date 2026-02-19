@@ -1,10 +1,10 @@
 ---
-name: erd-search
-description: Search Ethereum research data (forum posts, EIPs, code) via the Meilisearch index. Use when answering questions about Ethereum protocol, looking up EIPs, finding spec details, researching protocol history, or searching implementation code. Also use when user types /erd-search.
+name: eth-search
+description: Search Ethereum research data (forum posts, EIPs, code) via the Meilisearch index. Use when answering questions about Ethereum protocol, looking up EIPs, finding spec details, researching protocol history, or searching implementation code. Also use when user types /eth-search.
 user_invocable: true
 ---
 
-# erd-search — Ethereum Research Data Search
+# eth-search — Ethereum Research Data Search
 
 Search the Meilisearch-based Ethereum research index covering forum posts
 (ethresear.ch, Ethereum Magicians), EIPs, consensus/execution specs, and
@@ -35,37 +35,37 @@ If no key files or env vars exist, the CLI falls back to an empty key
 
 ## Search via CLI
 
-The `erd-search` CLI is installed globally (`uv tool install -e`) and works
+The `eth-search` CLI is installed globally (`uv tool install -e`) and works
 from any directory. It wraps the Meilisearch API with sensible defaults:
 code excluded, distinct by doc_id, Ethereum query expansion for hybrid.
 
 ```bash
 # Keyword search
-erd-search query "proposer boost"
+eth-search query "proposer boost"
 
 # Filter by source
-erd-search query "blob gas" --source-kind eip
+eth-search query "blob gas" --source-kind eip
 
 # Hybrid search (requires embedding setup)
-erd-search query "how does inactivity leak work" --hybrid
+eth-search query "how does inactivity leak work" --hybrid
 
 # Hybrid with pure semantic mode
-erd-search query "what happens during reorganization" --hybrid 0.7
+eth-search query "what happens during reorganization" --hybrid 0.7
 
 # Filter by author
-erd-search query "sharding" --source-kind forum --author vbuterin
+eth-search query "sharding" --source-kind forum --author vbuterin
 
 # Include code results (excluded by default)
-erd-search query "process_attestation" --include-code --repo consensus-specs
+eth-search query "process_attestation" --include-code --repo consensus-specs
 
 # Sort by date
-erd-search query "single slot finality" --sort "source_date_ts:desc"
+eth-search query "single slot finality" --sort "source_date_ts:desc"
 
 # JSON output for programmatic use
-erd-search --json query "EIP-4844"
+eth-search --json query "EIP-4844"
 
 # Index stats
-erd-search stats
+eth-search stats
 ```
 
 ### CLI flags reference
@@ -175,7 +175,7 @@ Route queries using `--source-kind` and `--source-name` filters:
 Use `--filter` for complex expressions:
 
 ```bash
-erd-search query "sharding" \
+eth-search query "sharding" \
   --source-kind forum --author vbuterin \
   --filter "category = 'Sharding' OR mentions_eips = 4844"
 ```

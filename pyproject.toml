@@ -22,7 +22,7 @@ dependencies = [
 
 [project.scripts]
 erd-index = "erd_index.cli:main"
-erd-search = "erd_index.search_cli:main"
+eth-search = "erd_index.search_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["erd_index"]

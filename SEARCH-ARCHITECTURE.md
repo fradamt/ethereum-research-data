@@ -260,7 +260,7 @@ dependencies = [
 
 [project.scripts]
 erd-index = "erd_index.cli:main"
-erd-search = "erd_index.search_cli:main"
+eth-search = "erd_index.search_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["erd_index"]
@@ -311,11 +311,11 @@ erd-index build-graph --changed-only
 erd-index link-specs
 
 # Search CLI
-erd-search query "proposer boost"
-erd-search query "how does proposer boost work" --hybrid
-erd-search query "blob gas" --source-kind eip
-erd-search query "attestation" --include-code
-erd-search stats
+eth-search query "proposer boost"
+eth-search query "how does proposer boost work" --hybrid
+eth-search query "blob gas" --source-kind eip
+eth-search query "attestation" --include-code
+eth-search stats
 ```
 
 ---
@@ -580,7 +580,7 @@ The `--changed-only` flag (default for `sync`) follows this flow. The
 
 ### 6.2 Search CLI
 
-`erd_index/search_cli.py` provides the `erd-search` command for querying the
+`erd_index/search_cli.py` provides the `eth-search` command for querying the
 Meilisearch index from the terminal or scripts.
 
 | Subcommand | Description |
@@ -718,7 +718,7 @@ Recommended wrapper:
 - `documentTemplateMaxBytes` is explicitly configured to `8000`.
 - Asymmetric prefixing is implemented: `embeddinggemma` expects
   `title: X | text: Y` for documents (via `documentTemplate`) and
-  `task: search result | query: Q` for queries (added by `erd-search` CLI
+  `task: search result | query: Q` for queries (added by `eth-search` CLI
   when `--hybrid` ratio >= 0.6).
 - Legacy proxy code still exists at `erd_index/embed_proxy.py` but is not
   part of the active indexing or search path.

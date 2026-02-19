@@ -67,7 +67,7 @@ The corpus is included in the repo, so you can index immediately:
 # Install Python dependencies
 uv sync
 
-# Install CLI tools globally (erd-search, erd-index)
+# Install CLI tools globally (eth-search, erd-index)
 uv tool install -e .
 
 # Set the master key (must match what Meilisearch was started with)
@@ -83,14 +83,14 @@ docker compose up -d
 This takes a few minutes to parse, chunk, and index ~6,500 forum posts
 into ~93k searchable chunks (each post is split into sections and replies).
 After it finishes, search is available via the Meilisearch API at
-`http://localhost:7700`, or via the `erd-search` CLI:
+`http://localhost:7700`, or via the `eth-search` CLI:
 
 ```bash
 # Keyword search
-erd-search query "proposer boost"
+eth-search query "proposer boost"
 
 # Hybrid search (requires embedding setup — see below)
-erd-search query "how does proposer boost work" --hybrid
+eth-search query "how does proposer boost work" --hybrid
 ```
 
 ### Updating the corpus
@@ -135,20 +135,20 @@ what you have.
 The CLIs are installed globally via `uv tool install -e .` (see Quick Start):
 
 ```bash
-erd-search query "proposer boost"                  # keyword search
-erd-search query "how does X work" --hybrid        # hybrid (semantic)
-erd-search query "blob gas" --source-kind eip      # filter by source
-erd-search query "sharding" --author vbuterin      # filter by author
-erd-search query "attestation" --include-code      # include code results
-erd-search query "SSF" --sort "source_date_ts:desc"  # sort by date
-erd-search --json query "EIP-4844"                 # JSON output
-erd-search stats                                   # index statistics
-erd-search apply-terminology                       # push synonym config
+eth-search query "proposer boost"                  # keyword search
+eth-search query "how does X work" --hybrid        # hybrid (semantic)
+eth-search query "blob gas" --source-kind eip      # filter by source
+eth-search query "sharding" --author vbuterin      # filter by author
+eth-search query "attestation" --include-code      # include code results
+eth-search query "SSF" --sort "source_date_ts:desc"  # sort by date
+eth-search --json query "EIP-4844"                 # JSON output
+eth-search stats                                   # index statistics
+eth-search apply-terminology                       # push synonym config
 ```
 
 Key flags: `--hybrid [RATIO]`, `--source-kind`, `--source-name`, `--author`,
 `--eip NUMBER`, `--repo NAME`, `--filter EXPR`, `--include-code`,
-`--sort EXPR`, `--limit N`, `--json`. Run `erd-search query --help`
+`--sort EXPR`, `--limit N`, `--json`. Run `eth-search query --help`
 for full details.
 
 The indexer CLI manages the search index:
@@ -189,7 +189,7 @@ Edit the paths and master key in each file before installing.
 ### API keys
 
 Meilisearch uses a **master key** (set at startup) to derive scoped API keys.
-The `erd-search` CLI resolves keys automatically:
+The `eth-search` CLI resolves keys automatically:
 **CLI flag** (`--key`) > **env var** > **key file** > empty string fallback.
 
 **For development without a master key**, everything works with empty keys --
@@ -273,13 +273,13 @@ embedding.
 After setup, hybrid search is available:
 
 ```bash
-erd-search query "what happens during an inactivity leak" --hybrid
+eth-search query "what happens during an inactivity leak" --hybrid
 ```
 
 The `--hybrid` flag defaults to `semanticRatio=0.5`. Note that Meilisearch's
 semantic ratio acts as a binary switch: 0.0-0.5 is keyword-dominated, 0.6-1.0
 is semantic-dominated, and 0.5 is the only value that produces blended results.
-Use `--hybrid 0.7` for pure semantic mode. See the `erd-search` skill for
+Use `--hybrid 0.7` for pure semantic mode. See the `eth-search` skill for
 detailed query routing guidance.
 
 ## Development
@@ -311,7 +311,7 @@ inexpensive.
 
 ## Claude Code integration
 
-This repo includes an `erd-search` skill (`skills/erd-search/SKILL.md`)
+This repo includes an `eth-search` skill (`skills/eth-search/SKILL.md`)
 that teaches Claude Code how to search the index. It covers query routing,
 filter syntax, the full CLI reference, and search workflow guidance.
 
@@ -321,7 +321,7 @@ Install it to make it available globally:
 ./scripts/install_skill.sh    # symlink — updates when you pull
 ```
 
-Type `/erd-search` in Claude Code to invoke the skill directly.
+Type `/eth-search` in Claude Code to invoke the skill directly.
 
 ## Architecture
 
