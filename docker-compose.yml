@@ -4,7 +4,8 @@
 # Stop:   docker compose down
 # Logs:   docker compose logs -f meilisearch
 #
-# After starting, run:
+# After starting, install Python tools (once) and index:
+#   uv sync && uv tool install -e .            # install erd-search, erd-index
 #   export MEILI_MASTER_KEY=changeme
 #   ./scripts/index_meili.sh                   # keyword search
 #   ./scripts/setup_hybrid.sh --docker         # + hybrid search (optional)

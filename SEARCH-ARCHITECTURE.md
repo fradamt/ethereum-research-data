@@ -18,7 +18,7 @@ ideas to a simpler, local-first stack.
 4. [SQLite Graph Schema](#4-sqlite-graph-schema)
 5. [Lessons from eth-protocol-expert](#5-lessons-from-eth-protocol-expert)
 6. [Architecture Recommendations](#6-architecture-recommendations)
-7. [Embedding Proxy](#7-embedding-proxy)
+7. [Embedding Architecture](#7-embedding-architecture)
 
 ---
 
@@ -208,10 +208,6 @@ ethereum-research-data/
       __init__.py
       manifest_db.py          # Incremental indexing state (index_state.db)
       run_log.py              # Run history and error tracking
-    mcp/
-      __init__.py
-      server.py               # MCP server entry point
-      tools.py                # search_chunks, get_chunk, get_eip_context, etc.
   data/                       # NEW - runtime data (gitignored)
     graph.db                  # SQLite graph sidecar
     index_state.db            # Incremental indexing manifest
@@ -256,13 +252,15 @@ dependencies = [
   "tree-sitter>=0.22,<0.24",
   "tree-sitter-python>=0.23,<0.24",
   "tree-sitter-go>=0.23,<0.24",
-  "tree-sitter-rust>=0.23,<0.24",
+  "tree-sitter-rust>=0.23,<0.23.3",
   "orjson>=3.10,<4.0",
+  "tokenizers>=0.22.2",
+  "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.scripts]
 erd-index = "erd_index.cli:main"
-erd-mcp = "erd_index.mcp.server:main"
+erd-search = "erd_index.search_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["erd_index"]
@@ -273,6 +271,7 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.6",
   "mypy>=1.10",
+  "types-PyYAML>=6.0",
 ]
 
 [tool.ruff]
@@ -293,32 +292,30 @@ testpaths = ["tests"]
 ### 2.3 CLI commands
 
 ```bash
-# Initialize Meilisearch index + SQLite databases
-uv run erd-index init
+# CLIs are installed globally via: uv tool install -e .
 
-# Ingest all markdown from corpus/
-uv run erd-index ingest-md
-uv run erd-index ingest-md --changed-only
+# Primary indexer workflow (recommended)
+erd-index init
+erd-index sync                    # incremental (changed files only)
+erd-index sync --full-rebuild     # full reprocess
+erd-index stats
+erd-index stats --repo go-ethereum
 
-# Ingest code from a specific repo
-uv run erd-index ingest-code --repo go-ethereum
-uv run erd-index ingest-code --repo go-ethereum --changed-only
+# Granular indexer commands
+erd-index ingest-md
+erd-index ingest-md --changed-only
+erd-index ingest-code --repo go-ethereum
+erd-index ingest-code --repo go-ethereum --changed-only
+erd-index build-graph
+erd-index build-graph --changed-only
+erd-index link-specs
 
-# Build/update dependency graph
-uv run erd-index build-graph
-uv run erd-index build-graph --changed-only
-
-# Full sync (md + code + graph)
-uv run erd-index sync
-uv run erd-index sync --changed-only
-uv run erd-index sync --full-rebuild
-
-# Stats and diagnostics
-uv run erd-index stats
-uv run erd-index stats --repo go-ethereum
-
-# Start MCP server
-uv run erd-mcp
+# Search CLI
+erd-search query "proposer boost"
+erd-search query "how does proposer boost work" --hybrid
+erd-search query "blob gas" --source-kind eip
+erd-search query "attestation" --include-code
+erd-search stats
 ```
 
 ---
@@ -581,24 +578,22 @@ CREATE TABLE IF NOT EXISTS indexed_file (
 The `--changed-only` flag (default for `sync`) follows this flow. The
 `--full-rebuild` flag skips step 2 and reprocesses everything.
 
-### 6.2 MCP server integration
+### 6.2 Search CLI
 
-`erd_index/mcp/server.py` exposes these tools to Claude Code:
+`erd_index/search_cli.py` provides the `erd-search` command for querying the
+Meilisearch index from the terminal or scripts.
 
-| Tool | Description |
-|------|-------------|
-| `search_chunks(query, filter?, limit?, offset?)` | BM25 search with Meilisearch filter syntax |
-| `get_chunk(id)` | Fetch a single chunk by ID |
-| `get_graph_neighbors(node_id, relation?, depth?, limit?)` | Graph traversal from SQLite |
-| `get_eip_context(eip_number)` | Returns EIP chunks + linked code + forum discussions |
+| Subcommand | Description |
+|------------|-------------|
+| `query` | Keyword or hybrid search with filter syntax |
+| `stats` | Index statistics (document counts, embedder status) |
+| `apply-terminology` | Push synonym/dictionary config to Meilisearch |
 
 Guidelines:
-- MCP server uses a **read-only** Meilisearch API key.
-- All responses include `id`, `path`, `start_line`, `end_line`, `url` for
-  easy reference.
-- Graph lookups come from SQLite; text retrieval from Meilisearch.
-- The MCP server is configured in `~/.mcp.json` as a replacement for the
-  QMD MCP server.
+- `query` uses a **read-only** search API key (`~/.config/erd/search-key`).
+- `stats` uses the admin key (`~/.config/erd/admin-key`).
+- `--hybrid` enables semantic search (default ratio 0.5).
+- `--distinct doc_id` is on by default to deduplicate chunks per document.
 
 ### 6.3 Configuration approach
 
@@ -664,135 +659,66 @@ enrich/ (eip_refs.py, forum_metadata.py, code_metadata.py, dependency_extractor.
   Default: `http://localhost:7700` with a master key in env.
 - SQLite databases live in `data/` (gitignored). They are regeneratable
   from source files via `--full-rebuild`.
-- The MCP server is a long-running process configured in `~/.mcp.json`.
 - For CI: use `--dry-run` to validate chunking without writing to Meili.
 
 ---
 
-## 7. Embedding Proxy
+## 7. Embedding Architecture
 
-### 7.1 Why the proxy exists
+### 7.1 Current runtime path
 
-Meilisearch v1.35 introduced two bugs that break direct Ollama embedding:
-
-1. **SSRF protection blocks localhost.** Meilisearch's new network security
-   layer blocks requests to `127.0.0.1` and `::1` by default, preventing it
-   from reaching a local Ollama instance. Workaround: launch Meilisearch with
-   `--experimental-allowed-ip-networks any`.
-
-2. **`documentTemplateMaxBytes` is ignored.** The setting is supposed to
-   truncate rendered document templates before sending them to the embedder,
-   but it has no effect for either the `ollama` or `rest` source types.
-   Documents up to 138k characters are sent verbatim to the embedding model,
-   which silently truncates or fails.
-   See: [meilisearch/meilisearch#6152](https://github.com/meilisearch/meilisearch/issues/6152)
-
-Because `nomic-embed-text` has an 8192-token context window (~4000-8200
-characters depending on content density), oversized inputs lose most of their
-content. The proxy solves this by splitting long texts into sub-chunks,
-embedding each one, and averaging the vectors.
-
-### 7.2 Request flow
+Hybrid search uses Meilisearch's built-in `rest` embedder, calling Ollama
+directly. No proxy is in the active runtime path.
 
 ```
-Meilisearch ──POST /api/embed──> Embed Proxy (:11435)
-                                      │
-                                      ├── split long inputs (paragraph boundaries, max 4000 chars)
-                                      ├── group sub-chunks into batches of 10
-                                      ├── POST each batch to Ollama concurrently (thread pool)
-                                      │         │
-                                      │         v
-                                      │     Ollama (:11434)
-                                      │     nomic-embed-text
-                                      │
-                                      ├── average sub-chunk embeddings per original input
-                                      └── return single embedding per input
+Meilisearch (embedder: source=rest)
+  └── POST /api/embed ──> Ollama (:11434)
+        └── model: embeddinggemma:300m (768 dims, 2048 context)
 ```
 
-Meilisearch is configured with `url: http://localhost:11435/api/embed`
-(the proxy) instead of Ollama's port 11434 directly.
+- Host/native URL: `http://localhost:11434/api/embed`
+- Docker URL: `http://ollama:11434/api/embed`
 
-### 7.3 Design constraints
+### 7.2 Embedder configuration
 
-- **Per-input resilience.** Each input is embedded independently. If
-  embedding fails for an individual input after retries, the proxy logs
-  the failure at WARNING level and returns a zero vector for that input.
-  This prevents one bad document from aborting the entire Meilisearch
-  embedding batch.
-- **Concurrency.** A `ThreadPoolExecutor` (default 4 workers) keeps total
-  latency under Meilisearch's ~30s per-batch timeout, even for documents
-  that split into 30+ sub-chunks.
-- **Retries with back-off.** Transient Ollama errors (502, 503, 504, 408)
-  and connection failures are retried 3 times with exponential back-off
-  (0.5s, 1s, 2s).
+After finalization, the embedder settings are:
 
-### 7.4 Module and CLI
+| Setting | Value |
+|---------|-------|
+| `source` | `rest` |
+| `model` | `embeddinggemma:300m` |
+| `dimensions` | `768` |
+| `url` | Ollama `/api/embed` endpoint |
+| `documentTemplateMaxBytes` | `8000` |
 
-The proxy lives at `erd_index/embed_proxy.py` and is installed as the
-`erd-embed-proxy` CLI entry point.
+`documentTemplate` uses title + text by default, and can be switched to the
+asymmetric format (`title: ... | text: ...`) when finalizing with `--asymmetric`.
+
+### 7.3 Initial and bulk embedding
+
+Initial corpus embedding is done by `scripts/batch_embed.py`, which calls
+Ollama directly and writes vectors via the Meilisearch API (`_vectors`):
+
+1. Set embedder to `source: "userProvided"` (`--setup`).
+2. Batch-embed existing documents and upsert vectors.
+3. Switch embedder to `source: "rest"` for query-time embedding (`--finalize`).
+
+Recommended wrapper:
 
 ```bash
-# Run with defaults (port 11435, max 4000 chars/chunk)
-uv run erd-embed-proxy
-
-# Custom configuration
-uv run erd-embed-proxy --port 11435 --max-chars 4000 --batch-size 10 --workers 4 -v
+./scripts/setup_hybrid.sh
+./scripts/setup_hybrid.sh --docker
+./scripts/setup_hybrid.sh --resume
 ```
 
-Configuration precedence: CLI flags > environment variables > built-in defaults.
+### 7.4 Operational notes
 
-| Env var | Default | Description |
-|---------|---------|-------------|
-| `ERD_PROXY_PORT` | 11435 | Listen port |
-| `ERD_PROXY_MAX_CHARS` | 4000 | Max characters per sub-chunk |
-| `ERD_PROXY_OLLAMA_URL` | `http://localhost:11434/api/embed` | Ollama endpoint |
-| `ERD_PROXY_OLLAMA_BATCH_SIZE` | 10 | Sub-chunks per Ollama request |
-| `ERD_PROXY_WORKERS` | 4 | Thread pool size |
-| `ERD_PROXY_RETRY_COUNT` | 3 | Retries per failed request |
-
-### 7.5 Launchd service
-
-The proxy runs as a launchd service alongside Meilisearch and Ollama.
-
-```bash
-# Install the service
-cp config/com.erd.embed-proxy.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.erd.embed-proxy.plist
-
-# Check status
-launchctl list | grep erd
-
-# View logs
-tail -f ~/.cache/erd-embed-proxy.log
-```
-
-The plist uses `KeepAlive: true` and `RunAtLoad: true` so the proxy starts
-automatically on login and restarts if it crashes.
-
-### 7.6 Related services
-
-| Service | Port | Plist | Log |
-|---------|------|-------|-----|
-| Meilisearch | 7700 | `com.meilisearch.plist` | `~/.cache/meilisearch.log` |
-| Ollama | 11434 | (managed by Ollama.app) | |
-| Embed Proxy | 11435 | `com.erd.embed-proxy.plist` | `~/.cache/erd-embed-proxy.log` |
-
-### 7.7 Failure handling and recovery
-
-- **Zero-vector fallback.** If embedding fails for an individual input
-  after all retries are exhausted, the proxy returns a zero vector
-  (all-zeros, same dimensionality as the model output). The document is
-  still indexed but will not appear in semantic search results until
-  re-embedded.
-- **WARNING-level logging.** Each failed input is logged at WARNING level
-  with: the input character count, the number of sub-chunks it was split
-  into, the error message, and a 120-character preview of the failed text.
-- **Stats tracking.** The proxy tracks `total`, `split`, `sub_chunks`, and
-  `failed` counts. Stats are logged every 500 inputs and at shutdown.
-- **Finding degraded documents.** Grep for `WARNING` in the proxy log
-  (`~/.cache/erd-embed-proxy.log`) to identify documents that received
-  zero-vector embeddings.
-- **Recovery.** Once the underlying issue is resolved (e.g. Ollama back
-  online, model reloaded), re-index the affected documents through the
-  normal ingestion pipeline. Meilisearch will request fresh embeddings
-  from the proxy, replacing the zero vectors.
+- Meilisearch v1.35+ requires `--experimental-allowed-ip-networks any` so
+  local Ollama calls are not blocked by SSRF protection.
+- `documentTemplateMaxBytes` is explicitly configured to `8000`.
+- Asymmetric prefixing is implemented: `embeddinggemma` expects
+  `title: X | text: Y` for documents (via `documentTemplate`) and
+  `task: search result | query: Q` for queries (added by `erd-search` CLI
+  when `--hybrid` ratio >= 0.6).
+- Legacy proxy code still exists at `erd_index/embed_proxy.py` but is not
+  part of the active indexing or search path.

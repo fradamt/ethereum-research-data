@@ -50,8 +50,9 @@ brew install meilisearch
 curl -L https://install.meilisearch.com | sh
 sudo mv ./meilisearch /usr/local/bin/
 
-# Start with SSRF workaround (required for v1.35+)
-meilisearch --master-key=changeme --experimental-allowed-ip-networks any &
+# Start with SSRF workaround (required for v1.35+) and large payload support
+meilisearch --master-key=changeme --experimental-allowed-ip-networks any \
+  --http-payload-size-limit 104857600 &
 
 # Ollama (optional, for hybrid search)
 # Install from https://ollama.com, then:
@@ -66,6 +67,9 @@ The corpus is included in the repo, so you can index immediately:
 # Install Python dependencies
 uv sync
 
+# Install CLI tools globally (erd-search, erd-index)
+uv tool install -e .
+
 # Set the master key (must match what Meilisearch was started with)
 export MEILI_MASTER_KEY=changeme
 
@@ -76,16 +80,17 @@ docker compose up -d
 ./scripts/index_meili.sh
 ```
 
-This takes a few minutes to parse, chunk, and index ~6,500 forum posts.
+This takes a few minutes to parse, chunk, and index ~6,500 forum posts
+into ~93k searchable chunks (each post is split into sections and replies).
 After it finishes, search is available via the Meilisearch API at
 `http://localhost:7700`, or via the `erd-search` CLI:
 
 ```bash
 # Keyword search
-uv run erd-search query "proposer boost"
+erd-search query "proposer boost"
 
 # Hybrid search (requires embedding setup — see below)
-uv run erd-search query "how does proposer boost work" --hybrid
+erd-search query "how does proposer boost work" --hybrid
 ```
 
 ### Updating the corpus
@@ -93,8 +98,8 @@ uv run erd-search query "how does proposer boost work" --hybrid
 To scrape new posts from the forums (incremental -- only fetches new topics):
 
 ```bash
-scripts/refresh.sh        # scrape + convert
-./scripts/index_meili.sh  # re-index
+./scripts/refresh.sh        # scrape + convert
+./scripts/index_meili.sh    # re-index
 ```
 
 ### Adding EIPs
@@ -127,32 +132,32 @@ what you have.
 
 ## CLI reference
 
-The `erd-search` CLI wraps the Meilisearch search API:
+The CLIs are installed globally via `uv tool install -e .` (see Quick Start):
 
 ```bash
-uv run erd-search query "proposer boost"                  # keyword search
-uv run erd-search query "how does X work" --hybrid        # hybrid (semantic)
-uv run erd-search query "blob gas" --source-kind eip      # filter by source
-uv run erd-search query "sharding" --author vbuterin      # filter by author
-uv run erd-search query "attestation" --include-code      # include code results
-uv run erd-search query "SSF" --sort "source_date_ts:desc"  # sort by date
-uv run erd-search query "EIP-4844" --json                 # JSON output
-uv run erd-search stats                                   # index statistics
-uv run erd-search apply-terminology                       # push synonym config
+erd-search query "proposer boost"                  # keyword search
+erd-search query "how does X work" --hybrid        # hybrid (semantic)
+erd-search query "blob gas" --source-kind eip      # filter by source
+erd-search query "sharding" --author vbuterin      # filter by author
+erd-search query "attestation" --include-code      # include code results
+erd-search query "SSF" --sort "source_date_ts:desc"  # sort by date
+erd-search --json query "EIP-4844"                 # JSON output
+erd-search stats                                   # index statistics
+erd-search apply-terminology                       # push synonym config
 ```
 
 Key flags: `--hybrid [RATIO]`, `--source-kind`, `--source-name`, `--author`,
 `--eip NUMBER`, `--repo NAME`, `--filter EXPR`, `--include-code`,
-`--sort EXPR`, `--limit N`, `--json`. Run `uv run erd-search query --help`
+`--sort EXPR`, `--limit N`, `--json`. Run `erd-search query --help`
 for full details.
 
 The indexer CLI manages the search index:
 
 ```bash
-uv run erd-index init          # initialize databases
-uv run erd-index sync          # incremental sync (changed files only)
-uv run erd-index sync --full-rebuild  # reprocess everything
-uv run erd-index stats         # show index statistics
+erd-index init          # initialize databases
+erd-index sync          # incremental sync (changed files only)
+erd-index sync --full-rebuild  # reprocess everything
+erd-index stats         # show index statistics
 ```
 
 ## Configuration
@@ -180,6 +185,47 @@ For running Meilisearch as a persistent background service without Docker:
   `/etc/systemd/system/` and enable with `systemctl`
 
 Edit the paths and master key in each file before installing.
+
+### API keys
+
+Meilisearch uses a **master key** (set at startup) to derive scoped API keys.
+The `erd-search` CLI resolves keys automatically:
+**CLI flag** (`--key`) > **env var** > **key file** > empty string fallback.
+
+**For development without a master key**, everything works with empty keys --
+just start Meilisearch without `--master-key` and skip this section.
+
+**When running with a master key**, create scoped keys and store them:
+
+```bash
+# 1. Start Meilisearch with a master key
+export MEILI_MASTER_KEY=changeme
+
+# 2. Create the config directory
+mkdir -p ~/.config/erd
+
+# 3. Create a search-only key
+curl -s -X POST 'http://localhost:7700/keys' \
+  -H "Authorization: Bearer $MEILI_MASTER_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"description": "erd search key", "actions": ["search"], "indexes": ["eth_chunks_v1"], "expiresAt": null}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])" \
+  > ~/.config/erd/search-key
+
+# 4. Create an admin key (for stats, settings, terminology)
+curl -s -X POST 'http://localhost:7700/keys' \
+  -H "Authorization: Bearer $MEILI_MASTER_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"description": "erd admin key", "actions": ["*"], "indexes": ["eth_chunks_v1"], "expiresAt": null}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])" \
+  > ~/.config/erd/admin-key
+```
+
+The CLI reads keys from `~/.config/erd/search-key` and `~/.config/erd/admin-key`.
+You can also set `ERD_SEARCH_KEY` and `ERD_ADMIN_KEY` environment variables instead.
+
+The `query` subcommand uses the search key; `stats` and `apply-terminology` use
+the admin key.
 
 ## Search examples
 
@@ -227,7 +273,7 @@ embedding.
 After setup, hybrid search is available:
 
 ```bash
-uv run erd-search query "what happens during an inactivity leak" --hybrid
+erd-search query "what happens during an inactivity leak" --hybrid
 ```
 
 The `--hybrid` flag defaults to `semanticRatio=0.5`. Note that Meilisearch's
@@ -254,7 +300,7 @@ To keep the corpus fresh automatically:
 
 ```bash
 # Weekly corpus refresh (Sunday 3am)
-0 3 * * 0  cd /path/to/ethereum-research-data && scripts/refresh.sh >> /tmp/erd-refresh.log 2>&1
+0 3 * * 0  cd /path/to/ethereum-research-data && ./scripts/refresh.sh >> /tmp/erd-refresh.log 2>&1
 
 # Daily incremental Meilisearch sync (4am)
 0 4 * * *  cd /path/to/ethereum-research-data && ./scripts/index_meili.sh >> /tmp/erd-index.log 2>&1
@@ -279,9 +325,8 @@ Type `/erd-search` in Claude Code to invoke the skill directly.
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the corpus pipeline design and
-[REVIEW.md](REVIEW.md) for the search indexer documentation (data model,
-chunking, graph sidecar, spec-code linking, incremental state).
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the corpus pipeline design,
+data model, chunking, graph sidecar, and incremental state.
 
 ## License
 

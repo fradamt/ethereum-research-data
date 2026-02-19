@@ -33,38 +33,39 @@ export ERD_ADMIN_KEY=<your-admin-key>     # for stats/settings
 If no key files or env vars exist, the CLI falls back to an empty key
 (works if Meilisearch has no master key set).
 
-## Search via CLI (preferred)
+## Search via CLI
 
-The `erd-search` CLI wraps the Meilisearch API with sensible defaults:
+The `erd-search` CLI is installed globally (`uv tool install -e`) and works
+from any directory. It wraps the Meilisearch API with sensible defaults:
 code excluded, distinct by doc_id, Ethereum query expansion for hybrid.
 
 ```bash
 # Keyword search
-uv run erd-search query "proposer boost"
+erd-search query "proposer boost"
 
 # Filter by source
-uv run erd-search query "blob gas" --source-kind eip
+erd-search query "blob gas" --source-kind eip
 
 # Hybrid search (requires embedding setup)
-uv run erd-search query "how does inactivity leak work" --hybrid
+erd-search query "how does inactivity leak work" --hybrid
 
 # Hybrid with pure semantic mode
-uv run erd-search query "what happens during reorganization" --hybrid 0.7
+erd-search query "what happens during reorganization" --hybrid 0.7
 
 # Filter by author
-uv run erd-search query "sharding" --source-kind forum --author vbuterin
+erd-search query "sharding" --source-kind forum --author vbuterin
 
 # Include code results (excluded by default)
-uv run erd-search query "process_attestation" --include-code --repo consensus-specs
+erd-search query "process_attestation" --include-code --repo consensus-specs
 
 # Sort by date
-uv run erd-search query "single slot finality" --sort "source_date_ts:desc"
+erd-search query "single slot finality" --sort "source_date_ts:desc"
 
 # JSON output for programmatic use
-uv run erd-search query "EIP-4844" --json
+erd-search --json query "EIP-4844"
 
 # Index stats
-uv run erd-search stats
+erd-search stats
 ```
 
 ### CLI flags reference
@@ -136,18 +137,18 @@ Use `--min-text-length 0` to disable.
 For direct API access or when the CLI is unavailable:
 
 ```bash
-# Set your key
-export MEILI_SEARCH_KEY=$(cat ~/.config/erd/search-key 2>/dev/null)
+# Read the search key (from key file or env var)
+ERD_KEY="${ERD_SEARCH_KEY:-$(cat ~/.config/erd/search-key 2>/dev/null)}"
 
 # Keyword search
 curl -s -X POST 'http://localhost:7700/indexes/eth_chunks_v1/search' \
-  -H "Authorization: Bearer $MEILI_SEARCH_KEY" \
+  -H "Authorization: Bearer $ERD_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"q": "blob gas pricing", "filter": "source_kind != '\''code'\''", "distinct": "doc_id", "limit": 10}'
 
 # Hybrid search
 curl -s -X POST 'http://localhost:7700/indexes/eth_chunks_v1/search' \
-  -H "Authorization: Bearer $MEILI_SEARCH_KEY" \
+  -H "Authorization: Bearer $ERD_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"q": "how does proposer boost work", "filter": "source_kind != '\''code'\'' AND text_length >= 50", "hybrid": {"semanticRatio": 0.5, "embedder": "default"}, "distinct": "doc_id", "limit": 10}'
 ```
@@ -174,7 +175,7 @@ Route queries using `--source-kind` and `--source-name` filters:
 Use `--filter` for complex expressions:
 
 ```bash
-uv run erd-search query "sharding" \
+erd-search query "sharding" \
   --source-kind forum --author vbuterin \
   --filter "category = 'Sharding' OR mentions_eips = 4844"
 ```
@@ -209,21 +210,21 @@ Use `--sort "field:asc"` or `--sort "field:desc"`:
 ## Graph queries
 
 For dependency lookups, cross-references, and context expansion, the SQLite
-graph database is available at `data/graph.db` (relative to project root).
+graph database is available at `~/EF/ethereum-research-data/data/graph.db`.
 
 ```bash
 # EIP dependency graph
-sqlite3 data/graph.db \
+sqlite3 ~/EF/ethereum-research-data/data/graph.db \
   "SELECT from_eip, relation, to_eip FROM eip_dependency_edge WHERE from_eip = 4844 OR to_eip = 4844;"
 
 # Code-to-spec links
-sqlite3 data/graph.db \
+sqlite3 ~/EF/ethereum-research-data/data/graph.db \
   "SELECT n.symbol_name, n.file_path, l.relation, l.confidence
    FROM spec_code_link l JOIN node n ON l.code_node_id = n.node_id
    WHERE l.eip = 1559;"
 
 # Index stats
-uv run erd-index stats
+erd-index stats
 ```
 
 ## Workflow
