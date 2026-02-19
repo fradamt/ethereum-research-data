@@ -66,6 +66,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-files", type=int, default=0, help="Limit files processed (0 = all)"
     )
 
+    # ingest-pdf
+    pdf = sub.add_parser("ingest-pdf", help="Ingest PDFs from corpus/", parents=[verbose_parent])
+    pdf.add_argument(
+        "--changed-only", action="store_true", help="Only process changed files"
+    )
+    pdf.add_argument("--source-name", help="Only process a specific source")
+    pdf.add_argument(
+        "--dry-run", action="store_true", help="Parse and chunk without writing to Meilisearch"
+    )
+
     # build-graph
     graph = sub.add_parser("build-graph", help="Build/update dependency graph", parents=[verbose_parent])
     graph.add_argument("--changed-only", action="store_true")
@@ -116,6 +126,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_init(settings)
     elif args.command == "ingest-md":
         _cmd_ingest_md(settings, args)
+    elif args.command == "ingest-pdf":
+        _cmd_ingest_pdf(settings, args)
     elif args.command == "ingest-code":
         _cmd_ingest_code(settings, args)
     elif args.command == "build-graph":
@@ -148,6 +160,18 @@ def _cmd_ingest_md(settings, args) -> None:
     from erd_index.pipeline import ingest_markdown
 
     ingest_markdown(
+        settings,
+        changed_only=args.changed_only,
+        source_name=args.source_name,
+        dry_run=args.dry_run,
+        verbose=args.verbose,
+    )
+
+
+def _cmd_ingest_pdf(settings, args) -> None:
+    from erd_index.pipeline import ingest_pdf
+
+    ingest_pdf(
         settings,
         changed_only=args.changed_only,
         source_name=args.source_name,
