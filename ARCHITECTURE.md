@@ -40,7 +40,7 @@ ethereum-research-data/
 │   └── curate_eips.py          # Copy all EIPs from an EIPs repo
 │
 ├── erd_index/                  # Meilisearch indexing pipeline (uv-managed)
-│   ├── embed_proxy.py          # Splitting embed proxy (Meilisearch → Ollama)
+│   ├── embed_proxy.py          # Legacy embed proxy (unused — replaced by REST embedder direct to Ollama)
 │
 ├── raw/                        # Scraped JSON (gitignored — regeneratable)
 │   ├── ethresearch/
