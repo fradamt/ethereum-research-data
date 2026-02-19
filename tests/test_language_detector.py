@@ -24,11 +24,15 @@ class TestKnownExtensions:
     def test_markdown(self):
         assert detect_language("README.md") == "markdown"
 
+    def test_pdf(self):
+        assert detect_language("papers/paper.pdf") == "pdf"
+
     def test_case_insensitive(self):
         assert detect_language("NOTES.MD") == "markdown"
         assert detect_language("main.PY") == "python"
         assert detect_language("lib.Go") == "go"
         assert detect_language("mod.Rs") == "rust"
+        assert detect_language("papers/Paper.PDF") == "pdf"
 
     def test_accepts_path_object(self):
         assert detect_language(Path("src/foo.py")) == "python"

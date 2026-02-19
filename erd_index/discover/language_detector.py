@@ -11,6 +11,7 @@ _EXTENSION_MAP: dict[str, str] = {
     ".py": "python",
     ".go": "go",
     ".rs": "rust",
+    ".pdf": "pdf",
 }
 
 
