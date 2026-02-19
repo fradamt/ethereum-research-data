@@ -27,26 +27,35 @@ immediately or refresh with the latest posts first.
 | [Meilisearch](https://www.meilisearch.com/docs/learn/getting_started/installation) | search infrastructure | see below |
 | [Ollama](https://ollama.com) + `embeddinggemma:300m` | hybrid search (optional) | `ollama pull embeddinggemma:300m` |
 
-### Installing Meilisearch
+### Installing Meilisearch + Ollama
 
-Pick **one** of these options:
+**Option A: Docker Compose (recommended)**
+
+The included `docker-compose.yml` runs both Meilisearch and Ollama:
 
 ```bash
-# Option A: Binary (macOS)
-brew install meilisearch
+export MEILI_MASTER_KEY=changeme
+docker compose up -d
+```
 
-# Option B: Binary (Linux / macOS without Homebrew)
+This starts Meilisearch on port 7700 and Ollama on port 11434, with
+persistent volumes for data and models.
+
+**Option B: Native install**
+
+```bash
+# macOS
+brew install meilisearch
+# or Linux
 curl -L https://install.meilisearch.com | sh
-# moves ./meilisearch to your PATH, e.g.:
 sudo mv ./meilisearch /usr/local/bin/
 
-# Option C: Docker
-docker run -d --name meilisearch \
-  -p 7700:7700 \
-  -e MEILI_MASTER_KEY=changeme \
-  -v $(pwd)/data/meili:/meili_data \
-  getmeili/meilisearch:latest \
-  meilisearch --experimental-allowed-ip-networks any
+# Start with SSRF workaround (required for v1.35+)
+meilisearch --master-key=changeme --experimental-allowed-ip-networks any &
+
+# Ollama (optional, for hybrid search)
+# Install from https://ollama.com, then:
+ollama pull embeddinggemma:300m
 ```
 
 ## Quick start
@@ -57,11 +66,11 @@ The corpus is included in the repo, so you can index immediately:
 # Install Python dependencies
 uv sync
 
-# Start Meilisearch (skip if using Docker — it's already running)
-meilisearch --master-key=changeme &
-
 # Set the master key (must match what Meilisearch was started with)
 export MEILI_MASTER_KEY=changeme
+
+# Start services (skip if using native install)
+docker compose up -d
 
 # Index the corpus into Meilisearch
 ./scripts/index_meili.sh
@@ -75,7 +84,7 @@ After it finishes, search is available via the Meilisearch API at
 # Keyword search
 uv run erd-search query "proposer boost"
 
-# Hybrid search (requires Ollama + embedding — see below)
+# Hybrid search (requires embedding setup — see below)
 uv run erd-search query "how does proposer boost work" --hybrid
 ```
 
@@ -116,6 +125,36 @@ as sibling directories. The default `config/indexer.toml` expects:
 Repos that don't exist on disk are silently skipped -- you only index
 what you have.
 
+## CLI reference
+
+The `erd-search` CLI wraps the Meilisearch search API:
+
+```bash
+uv run erd-search query "proposer boost"                  # keyword search
+uv run erd-search query "how does X work" --hybrid        # hybrid (semantic)
+uv run erd-search query "blob gas" --source-kind eip      # filter by source
+uv run erd-search query "sharding" --author vbuterin      # filter by author
+uv run erd-search query "attestation" --include-code      # include code results
+uv run erd-search query "SSF" --sort "source_date_ts:desc"  # sort by date
+uv run erd-search query "EIP-4844" --json                 # JSON output
+uv run erd-search stats                                   # index statistics
+uv run erd-search apply-terminology                       # push synonym config
+```
+
+Key flags: `--hybrid [RATIO]`, `--source-kind`, `--source-name`, `--author`,
+`--eip NUMBER`, `--repo NAME`, `--filter EXPR`, `--include-code`,
+`--sort EXPR`, `--limit N`, `--json`. Run `uv run erd-search query --help`
+for full details.
+
+The indexer CLI manages the search index:
+
+```bash
+uv run erd-index init          # initialize databases
+uv run erd-index sync          # incremental sync (changed files only)
+uv run erd-index sync --full-rebuild  # reprocess everything
+uv run erd-index stats         # show index statistics
+```
+
 ## Configuration
 
 All indexer settings live in `config/indexer.toml`:
@@ -130,6 +169,17 @@ All indexer settings live in `config/indexer.toml`:
 
 Environment: set `MEILI_MASTER_KEY` to match the key Meilisearch was
 started with.
+
+### Native service configs (non-Docker)
+
+For running Meilisearch as a persistent background service without Docker:
+
+- **macOS**: `config/com.meilisearch.plist` -- copy to
+  `~/Library/LaunchAgents/` and load with `launchctl`
+- **Linux**: `config/meilisearch.service` -- copy to
+  `/etc/systemd/system/` and enable with `systemctl`
+
+Edit the paths and master key in each file before installing.
 
 ## Search examples
 
@@ -156,28 +206,35 @@ curl -X POST 'http://localhost:7700/indexes/eth_chunks_v1/search' \
 ## Hybrid search (optional)
 
 Hybrid search combines keyword matching with semantic embeddings for
-conceptual queries ("how does inactivity leak work"). Requires Ollama:
+conceptual queries ("how does inactivity leak work"). Requires Ollama
+running with `embeddinggemma:300m`.
+
+The setup script handles everything: pulling the model, batch-embedding
+all documents (~30 min for 93k docs), and configuring query-time
+embedding.
 
 ```bash
-# Pull the embedding model
-ollama pull embeddinggemma:300m
+# Docker Compose
+./scripts/setup_hybrid.sh --docker
 
-# Embed all documents (one-time, ~30 min for 93k docs)
-uv run python scripts/batch_embed.py --setup
+# Native Ollama install
+./scripts/setup_hybrid.sh
 
-# Search with hybrid mode
+# Resume if interrupted
+./scripts/setup_hybrid.sh --resume
+```
+
+After setup, hybrid search is available:
+
+```bash
 uv run erd-search query "what happens during an inactivity leak" --hybrid
 ```
 
-The `--hybrid` flag defaults to `semanticRatio=0.5`, which blends keyword
-and semantic results. Use `--hybrid 0.7` for pure semantic mode.
-
-**Note:** Meilisearch v1.35+ blocks localhost connections by default. If
-using a non-Docker install, start Meilisearch with:
-
-```bash
-meilisearch --master-key=changeme --experimental-allowed-ip-networks any
-```
+The `--hybrid` flag defaults to `semanticRatio=0.5`. Note that Meilisearch's
+semantic ratio acts as a binary switch: 0.0-0.5 is keyword-dominated, 0.6-1.0
+is semantic-dominated, and 0.5 is the only value that produces blended results.
+Use `--hybrid 0.7` for pure semantic mode. See the `erd-search` skill for
+detailed query routing guidance.
 
 ## Development
 
@@ -205,6 +262,20 @@ To keep the corpus fresh automatically:
 
 The scraper and indexer are both incremental, so frequent runs are
 inexpensive.
+
+## Claude Code integration
+
+This repo includes an `erd-search` skill (`skills/erd-search/SKILL.md`)
+that teaches Claude Code how to search the index. It covers query routing,
+filter syntax, the full CLI reference, and search workflow guidance.
+
+Install it to make it available globally:
+
+```bash
+./scripts/install_skill.sh    # symlink — updates when you pull
+```
+
+Type `/erd-search` in Claude Code to invoke the skill directly.
 
 ## Architecture
 
