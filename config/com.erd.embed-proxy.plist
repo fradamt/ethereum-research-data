@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd service for the embed proxy (sits between Meilisearch and Ollama).
+  Only needed for native (non-Docker) installs.
+
+  Install:
+    1. Edit paths below to match your checkout location
+    2. cp config/com.erd.embed-proxy.plist ~/Library/LaunchAgents/
+    3. launchctl load ~/Library/LaunchAgents/com.erd.embed-proxy.plist
+
+  The embed proxy is optional — it handles token-aware splitting for
+  Meilisearch's built-in embedder. If you use batch_embed.py for
+  embedding (recommended), the proxy is only needed for auto-embedding
+  new documents added after the initial batch.
+-->
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.erd.embed-proxy</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/francesco/EF/ethereum-research-data/.venv/bin/erd-embed-proxy</string>
+        <!-- Edit this path to match your checkout -->
+        <string>/path/to/ethereum-research-data/.venv/bin/erd-embed-proxy</string>
         <string>--port</string>
         <string>11435</string>
         <string>--max-chars</string>
@@ -19,8 +34,8 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/francesco/.cache/erd-embed-proxy.log</string>
+    <string>/tmp/erd-embed-proxy.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/francesco/.cache/erd-embed-proxy.log</string>
+    <string>/tmp/erd-embed-proxy.log</string>
 </dict>
 </plist>

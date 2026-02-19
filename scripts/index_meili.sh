@@ -30,11 +30,20 @@ if [ -z "${MEILI_MASTER_KEY:-}" ]; then
 fi
 
 MEILI_URL="${ERD_MEILI_URL:-http://localhost:7700}"
-if ! curl -sf "${MEILI_URL}/health" >/dev/null 2>&1; then
-    echo "[index_meili] ERROR: Meilisearch is not reachable at ${MEILI_URL}" >&2
-    echo "  Start it with:  meilisearch --master-key \"\$MEILI_MASTER_KEY\"" >&2
-    exit 1
-fi
+# Wait up to 30s for Meilisearch to become reachable (handles Docker startup delay)
+for i in $(seq 1 6); do
+    if curl -sf "${MEILI_URL}/health" >/dev/null 2>&1; then
+        break
+    fi
+    if [ "$i" -eq 6 ]; then
+        echo "[index_meili] ERROR: Meilisearch is not reachable at ${MEILI_URL}" >&2
+        echo "  Start it with:  meilisearch --master-key \"\$MEILI_MASTER_KEY\"" >&2
+        echo "  Or: docker compose up -d" >&2
+        exit 1
+    fi
+    echo "[index_meili] Waiting for Meilisearch to start... (${i}/6)"
+    sleep 5
+done
 
 # ── Setup ────────────────────────────────────────────────────────────
 

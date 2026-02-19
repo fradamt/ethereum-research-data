@@ -1,0 +1,30 @@
+# systemd service for Meilisearch (Linux native installs).
+# For Docker installs, use docker-compose.yml instead.
+#
+# Install:
+#   1. Edit paths and MEILI_MASTER_KEY below
+#   2. sudo cp config/meilisearch.service /etc/systemd/system/
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now meilisearch
+#
+# Logs: journalctl -u meilisearch -f
+
+[Unit]
+Description=Meilisearch search engine
+After=network.target
+
+[Service]
+Type=simple
+# Edit this path to match your Meilisearch binary location
+ExecStart=/usr/local/bin/meilisearch \
+    --db-path /var/lib/meilisearch \
+    --experimental-allowed-ip-networks any \
+    --http-payload-size-limit 104857600
+Environment=MEILI_MASTER_KEY=changeme
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

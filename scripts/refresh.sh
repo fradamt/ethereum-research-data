@@ -6,6 +6,9 @@
 
 set -e
 
+command -v uv >/dev/null 2>&1 \
+  || { echo "Error: uv is not installed. Install from https://docs.astral.sh/uv/"; exit 1; }
+
 python3 -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" 2>/dev/null \
   || { echo "Error: Python 3.10+ is required"; exit 1; }
 

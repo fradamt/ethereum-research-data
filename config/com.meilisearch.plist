@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd service for Meilisearch.
+  Only needed for native (non-Docker) installs on macOS.
+
+  Install:
+    1. Edit paths below to match your setup
+    2. Set your master key (replace 'changeme')
+    3. cp config/com.meilisearch.plist ~/Library/LaunchAgents/
+    4. launchctl load ~/Library/LaunchAgents/com.meilisearch.plist
+
+  For Docker installs, use docker-compose.yml instead.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.meilisearch</string>
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Edit this path: brew installs to /opt/homebrew/bin/meilisearch -->
+        <string>/opt/homebrew/bin/meilisearch</string>
+        <string>--db-path</string>
+        <!-- Persistent path — do NOT use /tmp (cleared on reboot) -->
+        <string>/usr/local/var/meilisearch</string>
+        <string>--experimental-allowed-ip-networks</string>
+        <string>any</string>
+        <string>--http-payload-size-limit</string>
+        <string>104857600</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>MEILI_MASTER_KEY</key>
+        <!-- Replace with your key -->
+        <string>changeme</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/meilisearch.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/meilisearch.log</string>
+</dict>
+</plist>
