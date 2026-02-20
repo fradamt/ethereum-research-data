@@ -10,6 +10,7 @@ Environment variables::
     ERD_MEILI_URL    (default http://localhost:7700)
     ERD_SEARCH_KEY   (default: read from ~/.config/erd/search-key, or empty)
     ERD_ADMIN_KEY    (default: read from ~/.config/erd/admin-key, or empty)
+    ERD_CONFIG       (path to indexer.toml; checked before default locations)
 """
 
 from __future__ import annotations
@@ -80,6 +81,60 @@ def _default_admin_key() -> str:
     if env is not None:
         return env
     return _read_key_file("~/.config/erd/admin-key")
+
+
+# ---------------------------------------------------------------------------
+# Source root resolution
+# ---------------------------------------------------------------------------
+
+
+def _load_source_roots(config_path: str | None) -> dict[str, str]:
+    """Build a mapping from source_name → absolute root path.
+
+    Loads the indexer TOML config and resolves each corpus_source and
+    code_repo path.  Returns empty dict if config is unavailable.
+    """
+    from pathlib import Path
+
+    if config_path is None:
+        config_path = os.environ.get("ERD_CONFIG")
+    if config_path is not None:
+        p = Path(config_path).expanduser().resolve()
+    else:
+        # Package lives at erd_index/search_cli.py → project root is two levels up
+        p = (Path(__file__).resolve().parent.parent / "config" / "indexer.toml")
+    if not p.exists():
+        return {}
+
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef,import-not-found]
+        except ModuleNotFoundError:
+            return {}
+
+    with open(p, "rb") as f:
+        raw = tomllib.load(f)
+
+    project_root = p.parent.parent  # config/ is one level below project root
+    roots: dict[str, str] = {}
+
+    for src in raw.get("corpus_sources", []):
+        name = src.get("name", "")
+        src_path = Path(src.get("path", "")).expanduser()
+        if not src_path.is_absolute():
+            src_path = project_root / src_path
+        roots[name] = str(src_path.resolve())
+
+    for repo in raw.get("code_repos", []):
+        name = repo.get("name", "")
+        repo_path = Path(repo.get("path", "")).expanduser()
+        if not repo_path.is_absolute():
+            repo_path = project_root / repo_path
+        roots[name] = str(repo_path.resolve())
+
+    return roots
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +278,13 @@ def _build_filters(args: argparse.Namespace) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def format_hit(idx: int, hit: dict, *, full: bool = False) -> str:
+def format_hit(
+    idx: int,
+    hit: dict,
+    *,
+    full: bool = False,
+    source_roots: dict[str, str] | None = None,
+) -> str:
     """Format a single search hit for terminal display."""
     lines: list[str] = []
 
@@ -231,29 +292,43 @@ def format_hit(idx: int, hit: dict, *, full: bool = False) -> str:
     title = hit.get("title") or hit.get("symbol_name") or "(untitled)"
     lines.append(f"[{idx}] {title}")
 
-    # Metadata line
+    # Source metadata
+    source_kind = hit.get("source_kind", "")
+    source_name = hit.get("source_name", "")
+    author = hit.get("author", "")
     meta_parts: list[str] = []
-    for field in ("source_kind", "source_name", "author"):
-        val = hit.get(field)
-        if val:
-            meta_parts.append(str(val))
+    if source_kind:
+        meta_parts.append(source_kind)
+    if source_name:
+        meta_parts.append(source_name)
+    if author:
+        meta_parts.append(f"by {author}")
     if meta_parts:
-        lines.append("    " + " | ".join(meta_parts))
+        lines.append("    source: " + " | ".join(meta_parts))
 
     # Heading path (section context)
     heading_path = hit.get("heading_path")
     if heading_path:
-        lines.append("    " + " > ".join(heading_path))
+        lines.append("    section: " + " > ".join(heading_path))
 
-    # URL / path line — show both when available
+    # URL
     url = hit.get("url")
+    if url:
+        lines.append(f"    url: {url}")
+
+    # Path — resolve to absolute if source root is known
     path = hit.get("path")
     start_line = hit.get("start_line")
-    if url:
-        lines.append(f"    {url}")
     if path:
-        loc = f"{path}:{start_line}" if start_line else path
-        lines.append(f"    {loc}")
+        if source_roots and source_name and source_name in source_roots:
+            root = source_roots[source_name]
+            # Ensure relative path can't escape the source root
+            clean = path.lstrip("/")
+            abs_path = f"{root}/{clean}"
+        else:
+            abs_path = path
+        loc = f"{abs_path}:{start_line}" if start_line else abs_path
+        lines.append(f"    path: {loc}")
 
     # Text: full mode shows up to 4000 chars, default shows 200-char preview
     text = hit.get("text", "")
@@ -268,7 +343,14 @@ def format_hit(idx: int, hit: dict, *, full: bool = False) -> str:
     return "\n".join(lines)
 
 
-def _print_results(data: dict, *, json_mode: bool, verbose: bool, full: bool = False) -> None:
+def _print_results(
+    data: dict,
+    *,
+    json_mode: bool,
+    verbose: bool,
+    full: bool = False,
+    source_roots: dict[str, str] | None = None,
+) -> None:
     """Print search results to stdout."""
     if json_mode:
         print(json.dumps(data, indent=2))
@@ -278,7 +360,7 @@ def _print_results(data: dict, *, json_mode: bool, verbose: bool, full: bool = F
     for i, hit in enumerate(hits, 1):
         if i > 1:
             print()
-        print(format_hit(i, hit, full=full))
+        print(format_hit(i, hit, full=full, source_roots=source_roots))
 
     # Summary
     total = data.get("estimatedTotalHits", len(hits))
@@ -302,7 +384,15 @@ def _cmd_query(args: argparse.Namespace) -> None:
     url = f"{args.url}/indexes/{DEFAULT_INDEX}/search"
     params = build_search_params(args)
     data = _meili_request(url, args.key, method="POST", payload=params)
-    _print_results(data, json_mode=args.json, verbose=args.verbose, full=getattr(args, "full", False))
+    config = getattr(args, "config", None)
+    source_roots = _load_source_roots(config)
+    _print_results(
+        data,
+        json_mode=args.json,
+        verbose=args.verbose,
+        full=getattr(args, "full", False),
+        source_roots=source_roots,
+    )
 
 
 def _cmd_stats(args: argparse.Namespace) -> None:
@@ -358,6 +448,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--json", action="store_true", help="Output raw JSON")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show search metadata")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to indexer.toml (default: auto-detected from package location)",
+    )
 
     sub = parser.add_subparsers(dest="command")
 

@@ -259,7 +259,7 @@ class TestFormatHit:
             "text": "Some content.",
         }
         out = format_hit(1, hit)
-        assert "forum | ethresear.ch | vbuterin" in out
+        assert "forum | ethresear.ch | by vbuterin" in out
 
     def test_hit_with_path_and_line(self) -> None:
         hit = {
@@ -309,8 +309,8 @@ class TestFormatHit:
         hit = {"title": "T", "url": "https://x.com", "text": "t"}
         out = format_hit(1, hit)
         lines = out.strip().split("\n")
-        # line 0: title, line 1: url, line 2: text — no metadata line
-        assert lines[1].strip().startswith("https://")
+        # line 0: title, line 1: url (with label), line 2: text — no source line
+        assert lines[1].strip().startswith("url:")
 
 
 # ===================================================================
